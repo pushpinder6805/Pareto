@@ -1,42 +1,34 @@
 import { apiInitializer } from "discourse/lib/api";
 import { ajax } from "discourse/lib/ajax";
-import {
-  SidebarPanel,
-  SidebarSection,
-  SidebarSectionLink,
-} from "discourse/lib/sidebar/section";
+import { SidebarSection, SidebarSectionLink } from "discourse/lib/sidebar/section";
 
 export default apiInitializer("1.9.0", (api) => {
-  console.log("🧩 Dynamic Sidebar (panels mode 3.5.2)");
+  console.log("🧩 Dynamic Sidebar v3.5.2 — sections injector");
 
-  async function loadDynamicSidebar() {
-    const sidebarService = api.container.lookup("service:sidebar-state");
-    if (!sidebarService || !sidebarService.panels) {
-      console.warn("⚠️ Sidebar panels not found");
+  async function buildDynamicSidebar() {
+    const sidebar = api.container.lookup("service:sidebar-state");
+    const panel = sidebar.panels?.[0];
+    if (!panel || !panel.sections) {
+      console.warn("⚠️ No sidebar sections available yet");
       return;
     }
 
-    // pick first panel (community/categories)
-    const firstPanel = sidebarService.panels[0];
-    if (!firstPanel) {
-      console.warn("⚠️ No sidebar panel loaded yet");
-      return;
-    }
-
+    // fetch all categories
     const { category_list } = await ajax("/categories.json");
-    const all = category_list.categories;
-    const topCats = all.filter((c) => !c.parent_category_id);
+    const allCats = category_list.categories;
+    const topCats = allCats.filter((c) => !c.parent_category_id);
 
-    const sections = [];
+    // remove old dynamic sections (optional safety)
+    panel.sections = panel.sections.filter((s) => !s.name?.startsWith("dynamic-"));
 
-    topCats.forEach((cat) => {
-      const subs = all.filter((s) => s.parent_category_id === cat.id);
-      if (!subs.length) return;
+    for (const cat of topCats) {
+      const subs = allCats.filter((s) => s.parent_category_id === cat.id);
+      if (!subs.length) continue;
 
       const links = subs.map(
         (s) =>
           new SidebarSectionLink({
-            name: `cat-${s.slug}`,
+            name: `dynamic-${s.slug}`,
             title: s.name,
             route: "discovery.category",
             models: [s.slug],
@@ -45,31 +37,20 @@ export default apiInitializer("1.9.0", (api) => {
       );
 
       const section = new SidebarSection({
-        name: `cat-${cat.slug}`,
+        name: `dynamic-${cat.slug}`,
         title: cat.name,
-        icon: "folder-tree",
         links,
+        icon: "folder-tree",
       });
 
-      sections.push(section);
-      console.log(`✅ Built section for: ${cat.name}`);
-    });
+      panel.sections.push(section);
+      console.log(`✅ Injected sidebar section for: ${cat.name}`);
+    }
 
-    // Create a new sidebar panel dynamically
-    const panel = new SidebarPanel({
-      name: "projects",
-      title: "Projects",
-      icon: "folder",
-      sections,
-    });
-
-    sidebarService.panels.push(panel);
-    console.log("🎯 Injected 'Projects' panel into sidebar");
-
-    // Trigger redraw
-    sidebarService.appEvents?.trigger?.("sidebar:refresh");
+    sidebar.appEvents?.trigger?.("sidebar:refresh");
+    console.log("🎯 Sidebar refreshed with dynamic project sections");
   }
 
-  api.onAppEvent("sidebar:initialized", loadDynamicSidebar);
+  api.onAppEvent("sidebar:initialized", buildDynamicSidebar);
 });
 
