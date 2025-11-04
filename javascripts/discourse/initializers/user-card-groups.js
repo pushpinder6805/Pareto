@@ -1,32 +1,45 @@
 // /javascripts/discourse/initializers/user-card-groups.js
 import { withPluginApi } from "discourse/lib/plugin-api";
 import { ajax } from "discourse/lib/ajax";
+import { createElement } from "discourse-common/lib/dom";
 
 export default {
   name: "user-card-groups",
   initialize() {
     withPluginApi("1.32.0", (api) => {
-      api.onAppEvent("user-card:show", async (card) => {
-        const username = card?.user?.username;
+      api.addUserCardContents((user, card) => {
+        const username = user?.username;
         if (!username) return;
 
-        try {
-          const result = await ajax(`/u/${username}.json`);
-          const groups = result?.user?.groups || [];
-          if (!groups.length) return;
+        const container = createElement("div", { class: "user-card-groups" });
+        container.textContent = "Loading groups…";
 
-          const groupNames = groups.map((g) => g.name).join(", ");
-          const container = document.createElement("div");
-          container.classList.add("user-card-groups");
-          container.innerHTML = `<dt>Groups</dt><dd>${groupNames}</dd>`;
+        // Async load user data
+        ajax(`/u/${username}.json`)
+          .then((result) => {
+            const groups = result?.user?.groups || [];
+            if (groups.length) {
+              container.textContent = "";
+              const dt = createElement("dt");
+              dt.textContent = "Groups";
+              const dd = createElement("dd");
+              dd.innerHTML = groups
+                .map(
+                  (g) =>
+                    `<a class="group-link" href="/g/${g.name}">${g.name}</a>`
+                )
+                .join(", ");
+              container.appendChild(dt);
+              container.appendChild(dd);
+            } else {
+              container.textContent = "";
+            }
+          })
+          .catch(() => {
+            container.textContent = "";
+          });
 
-          const cardContent = document.querySelector("#user-card .card-content");
-          if (cardContent && !cardContent.querySelector(".user-card-groups")) {
-            cardContent.appendChild(container);
-          }
-        } catch (e) {
-          console.warn("Failed to load groups for user card:", e);
-        }
+        return container;
       });
     });
   },
