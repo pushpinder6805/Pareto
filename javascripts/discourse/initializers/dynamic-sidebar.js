@@ -1,12 +1,12 @@
 import { apiInitializer } from "discourse/lib/api";
 import { ajax } from "discourse/lib/ajax";
 import { SidebarSection, SidebarSectionLink } from "discourse/lib/sidebar/section";
-import EmberObject, { set } from "@ember/object";
+import { set } from "@ember/object";
 
 export default apiInitializer("1.9.0", (api) => {
-  console.log("🧩 Dynamic Sidebar (tracked-safe injector)");
+  console.log("🧩 Dynamic Sidebar Loader (rebuild-safe)");
 
-  async function buildDynamicSidebar() {
+  async function buildSidebar() {
     const sidebar = api.container.lookup("service:sidebar-state");
     const panel = sidebar.panels?.[0];
     if (!panel || !panel.sections) {
@@ -14,12 +14,14 @@ export default apiInitializer("1.9.0", (api) => {
       return;
     }
 
+    // fetch categories
     const { category_list } = await ajax("/categories.json");
     const all = category_list.categories;
     const top = all.filter((c) => !c.parent_category_id);
 
-    // create a copy of current sections (tracked-safe)
-    const newSections = [...panel.sections.filter((s) => !s.name?.startsWith("dynamic-"))];
+    // remove previous dynamic sections
+    const kept = panel.sections.filter((s) => !s.name?.startsWith("dynamic-"));
+    const dynamicSections = [];
 
     for (const cat of top) {
       const subs = all.filter((s) => s.parent_category_id === cat.id);
@@ -43,17 +45,22 @@ export default apiInitializer("1.9.0", (api) => {
         icon: "folder-tree",
       });
 
-      newSections.push(section);
-      console.log(`✅ Built section for: ${cat.name}`);
+      dynamicSections.push(section);
     }
 
-    // use Ember.set to notify reactivity
-    set(panel, "sections", newSections);
+    // reassign full tracked array
+    set(panel, "sections", [...kept, ...dynamicSections]);
 
-    sidebar.appEvents?.trigger?.("sidebar:refresh");
-    console.log("🎯 Sidebar refreshed with dynamic sections");
+    // force tracked recompute
+    if (sidebar.appEvents) {
+      sidebar.appEvents.trigger("sidebar:refresh");
+      sidebar.appEvents.trigger("sidebar:recalculate");
+    }
+
+    console.log("✅ Dynamic sections injected:", dynamicSections.length);
   }
 
-  api.onAppEvent("sidebar:initialized", buildDynamicSidebar);
+  // trigger when sidebar is ready
+  api.onAppEvent("sidebar:initialized", buildSidebar);
 });
 
