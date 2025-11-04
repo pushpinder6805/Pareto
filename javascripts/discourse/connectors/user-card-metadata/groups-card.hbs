@@ -1,12 +1,9 @@
-{{#if this.groups.length}}
+{{#if this.groups}}
   <div class="user-card-groups">
     <span class="desc">Groups:</span>
-    <span class="group-list">
-      {{#each this.groups as |g i|}}
-        <a href="/g/{{g.name}}" class="group-link">{{g.name}}</a>
-        {{#if (lt (add i 1) this.groups.length)}}, {{/if}}
-      {{/each}}
-    </span>
+    {{#each this.groups as |g|}}
+      <a href="/g/{{g.name}}" class="group-link">{{g.name}}</a>
+    {{/each}}
   </div>
 {{/if}}
 
