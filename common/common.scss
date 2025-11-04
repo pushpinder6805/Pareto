@@ -7,3 +7,15 @@
     align-items: center;
     background-color: var(--secondary);
 }
+
+
+.relative-date {
+  font-size: 0;
+  position: relative;
+}
+
+.relative-date::after {
+  content: attr(title);
+  font-size: 13px;
+  color: inherit;
+}
