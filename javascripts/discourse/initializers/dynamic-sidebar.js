@@ -1,53 +1,50 @@
 import { apiInitializer } from "discourse/lib/api";
 import { ajax } from "discourse/lib/ajax";
+import { SidebarSection, SidebarSectionLink } from "discourse/lib/sidebar/section";
 
 export default apiInitializer("1.9.0", (api) => {
-  console.log("🧩 Dynamic Sidebar Initialized");
+  console.log("🧩 Dynamic Sidebar Initialized (modern)");
 
   async function buildDynamicSidebar() {
     try {
-      // Fetch categories visible to the current user
-      const data = await ajax("/categories.json");
-      const categories = data.category_list.categories.filter(
-        (c) => !c.parent_category_id // top-level only
-      );
+      const { category_list } = await ajax("/categories.json");
+      const all = category_list.categories;
 
-      categories.forEach((cat) => {
-        // Find subcategories
-        const subs = data.category_list.categories.filter(
-          (sc) => sc.parent_category_id === cat.id
+      // Top-level categories only
+      const topCategories = all.filter((c) => !c.parent_category_id);
+
+      // Create one section per top-level category
+      topCategories.forEach((cat) => {
+        const subcats = all.filter((sc) => sc.parent_category_id === cat.id);
+
+        if (subcats.length === 0) return; // skip empty
+
+        const links = subcats.map(
+          (sc) =>
+            new SidebarSectionLink({
+              name: sc.name,
+              route: "discovery.category",
+              models: [sc.slug],
+              title: sc.description_text || "",
+              icon: "folder", // optional
+            })
         );
 
-        // Add sidebar section dynamically
-        api.addSidebarSection((BaseSection, BaseLink) => {
-          return class extends BaseSection {
-            get name() {
-              return cat.name;
-            }
-
-            get links() {
-              return subs.map(
-                (s) =>
-                  new BaseLink({
-                    label: s.name,
-                    title: s.description_text,
-                    route: "discovery.category",
-                    models: [s.slug],
-                  })
-              );
-            }
-          };
+        const section = new SidebarSection({
+          name: cat.name,
+          links,
+          icon: "folder-tree", // optional
+          prioritize: true,
         });
+
+        api.addSidebarSection(section);
       });
     } catch (err) {
-      console.error("❌ Failed to load dynamic sidebar:", err);
+      console.error("❌ Sidebar build failed:", err);
     }
   }
 
-  // Build on load
-  buildDynamicSidebar();
-
-  // Optionally rebuild when categories change (live update)
-  api.onAppEvent("categories:changed", () => buildDynamicSidebar());
+  // Run after sidebar initializes
+  api.onAppEvent("sidebar:initialized", buildDynamicSidebar);
 });
 
