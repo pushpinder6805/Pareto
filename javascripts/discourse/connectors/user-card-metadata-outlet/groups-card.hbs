@@ -1,2 +1,11 @@
-<div class="user-card-groups">OUTLET TEST</div>
+{{#if this.groups.length}}
+  <div class="user-card-groups">
+    <span class="desc">Groups:</span>
+    <span class="group-list">
+      {{#each this.groups as |g index|}}
+        <a href="/g/{{g.name}}" class="group-link">{{g.name}}</a>{{#unless (eq index (dec this.groups.length))}}, {{/unless}}
+      {{/each}}
+    </span>
+  </div>
+{{/if}}
 
