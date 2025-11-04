@@ -6,42 +6,41 @@ export default {
   name: "user-card-groups",
   initialize() {
     withPluginApi("1.32.0", (api) => {
-      api.addUserCardContents((user) => {
-        const username = user?.username;
-        if (!username) return;
+      api.decorateWidget("user-card:after-details", (helper) => {
+        const user = helper.attrs?.user;
+        if (!user?.username) return;
 
         const container = document.createElement("div");
         container.className = "user-card-groups";
         container.textContent = "Loading groups…";
 
-        ajax(`/u/${username}.json`)
+        ajax(`/u/${user.username}.json`)
           .then((result) => {
             const groups = result?.user?.groups || [];
             container.innerHTML = "";
 
             if (groups.length) {
-              const dt = document.createElement("dt");
-              dt.textContent = "Groups";
+              const label = document.createElement("strong");
+              label.textContent = "Groups: ";
+              container.appendChild(label);
 
-              const dd = document.createElement("dd");
               groups.forEach((g, i) => {
                 const a = document.createElement("a");
                 a.href = `/g/${g.name}`;
                 a.className = "group-link";
                 a.textContent = g.name;
-                dd.appendChild(a);
-                if (i < groups.length - 1) dd.append(", ");
+                container.appendChild(a);
+                if (i < groups.length - 1) {
+                  container.append(", ");
+                }
               });
-
-              container.appendChild(dt);
-              container.appendChild(dd);
             }
           })
           .catch(() => {
             container.textContent = "";
           });
 
-        return container;
+        return container.outerHTML;
       });
     });
   },
