@@ -3,48 +3,43 @@ import { ajax } from "discourse/lib/ajax";
 import { SidebarSection, SidebarSectionLink } from "discourse/lib/sidebar/section";
 
 export default apiInitializer("1.9.0", (api) => {
-  console.log("🧩 Dynamic Sidebar Initialized (modern)");
+  console.log("🧩 Dynamic Sidebar v3.5 live");
 
-  async function buildDynamicSidebar() {
+  async function buildSidebar() {
     try {
-      const { category_list } = await ajax("/categories.json");
-      const all = category_list.categories;
+      const data = await ajax("/categories.json");
+      const cats = data.category_list.categories;
+      const parents = cats.filter((c) => !c.parent_category_id);
 
-      // Top-level categories only
-      const topCategories = all.filter((c) => !c.parent_category_id);
-
-      // Create one section per top-level category
-      topCategories.forEach((cat) => {
-        const subcats = all.filter((sc) => sc.parent_category_id === cat.id);
-
-        if (subcats.length === 0) return; // skip empty
-
-        const links = subcats.map(
-          (sc) =>
-            new SidebarSectionLink({
-              name: sc.name,
-              route: "discovery.category",
-              models: [sc.slug],
-              title: sc.description_text || "",
-              icon: "folder", // optional
-            })
-        );
+      parents.forEach((parent) => {
+        const subs = cats.filter((sc) => sc.parent_category_id === parent.id);
+        if (subs.length === 0) return;
 
         const section = new SidebarSection({
-          name: cat.name,
-          links,
-          icon: "folder-tree", // optional
-          prioritize: true,
+          name: `cat-${parent.slug}`,
+          title: parent.name,
+          icon: "folder-tree",
+          links: subs.map(
+            (s) =>
+              new SidebarSectionLink({
+                name: `cat-${s.slug}`,
+                title: s.name,
+                route: "discovery.category",
+                models: [s.slug],
+                icon: "folder",
+              })
+          ),
         });
 
         api.addSidebarSection(section);
+        console.log(`✅ Added section for ${parent.name}`);
       });
     } catch (err) {
-      console.error("❌ Sidebar build failed:", err);
+      console.error("❌ Failed to build sidebar:", err);
     }
   }
 
-  // Run after sidebar initializes
-  api.onAppEvent("sidebar:initialized", buildDynamicSidebar);
+  // Rebuild when sidebar is ready
+  api.onAppEvent("sidebar:initialized", buildSidebar);
 });
 
