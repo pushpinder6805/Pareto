@@ -1,17 +1,25 @@
 import { apiInitializer } from "discourse/lib/api";
 import { ajax } from "discourse/lib/ajax";
 import {
+  SidebarPanel,
   SidebarSection,
   SidebarSectionLink,
 } from "discourse/lib/sidebar/section";
 
 export default apiInitializer("1.9.0", (api) => {
-  console.log("🧩 Dynamic Sidebar Loader (3.5.2)");
+  console.log("🧩 Dynamic Sidebar (panels mode 3.5.2)");
 
   async function loadDynamicSidebar() {
     const sidebarService = api.container.lookup("service:sidebar-state");
-    if (!sidebarService) {
-      console.warn("⚠️ Sidebar service not found");
+    if (!sidebarService || !sidebarService.panels) {
+      console.warn("⚠️ Sidebar panels not found");
+      return;
+    }
+
+    // pick first panel (community/categories)
+    const firstPanel = sidebarService.panels[0];
+    if (!firstPanel) {
+      console.warn("⚠️ No sidebar panel loaded yet");
       return;
     }
 
@@ -19,7 +27,7 @@ export default apiInitializer("1.9.0", (api) => {
     const all = category_list.categories;
     const topCats = all.filter((c) => !c.parent_category_id);
 
-    const newSections = [];
+    const sections = [];
 
     topCats.forEach((cat) => {
       const subs = all.filter((s) => s.parent_category_id === cat.id);
@@ -43,18 +51,23 @@ export default apiInitializer("1.9.0", (api) => {
         links,
       });
 
-      newSections.push(section);
-      console.log(`✅ Prepared section for: ${cat.name}`);
+      sections.push(section);
+      console.log(`✅ Built section for: ${cat.name}`);
     });
 
-    // Inject directly into sidebar’s custom sections
-    sidebarService.customSections = [
-      ...(sidebarService.customSections || []),
-      ...newSections,
-    ];
+    // Create a new sidebar panel dynamically
+    const panel = new SidebarPanel({
+      name: "projects",
+      title: "Projects",
+      icon: "folder",
+      sections,
+    });
 
-    sidebarService.appEvents.trigger("sidebar:refresh");
-    console.log("🎯 Injected dynamic sections into sidebar");
+    sidebarService.panels.push(panel);
+    console.log("🎯 Injected 'Projects' panel into sidebar");
+
+    // Trigger redraw
+    sidebarService.appEvents?.trigger?.("sidebar:refresh");
   }
 
   api.onAppEvent("sidebar:initialized", loadDynamicSidebar);
