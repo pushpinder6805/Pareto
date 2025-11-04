@@ -1,34 +1,26 @@
+// /javascripts/discourse/initializers/user-card-groups.js
+import { withPluginApi } from "discourse/lib/plugin-api";
+
 export default {
   name: "user-card-groups",
-
   initialize() {
-    if (!window.requirejs) return;
-
-    const { withPluginApi } = require("discourse/lib/plugin-api");
-
-    withPluginApi("1.20.0", (api) => {
-      api.onUserCardShow((card) => {
-        const user = card.user;
-        if (!user?.groups?.length) return;
-
-        const existing = card.element.querySelector(".user-card-groups");
-        if (existing) return;
+    withPluginApi("1.32.0", (api) => {
+      api.onAppEvent("user-card:show", (card) => {
+        const user = card?.user;
+        if (!user) return;
 
         const groups = user.groups
-          .filter((g) => !["everyone", "trust_level_0"].includes(g.name))
-          .map(
-            (g) =>
-              `<a href="/g/${g.name}" class="user-card-group">${g.name}</a>`
-          )
+          ?.map((g) => g.name)
           .join(", ");
 
-        const div = document.createElement("div");
-        div.className = "user-card-groups";
-        div.innerHTML = `<strong>Groups:</strong> ${groups}`;
+        if (groups) {
+          const container = document.createElement("div");
+          container.classList.add("user-card-groups");
+          container.innerText = `Groups: ${groups}`;
 
-        card.element
-          .querySelector(".card-content")
-          ?.appendChild(div);
+          const userCardDetails = document.querySelector(".user-card-main");
+          if (userCardDetails) userCardDetails.appendChild(container);
+        }
       });
     });
   },
