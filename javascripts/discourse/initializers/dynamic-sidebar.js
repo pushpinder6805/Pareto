@@ -7,46 +7,47 @@ import {
 } from "discourse/lib/sidebar/section";
 
 export default apiInitializer("1.9.0", (api) => {
-  console.log("🧩 Dynamic Sidebar registered (Discourse 3.5)");
+  console.log("🧩 Dynamic Sidebar initialized (Discourse 3.5 stable)");
 
-  api.addSidebarPanel("projects", async () => {
-    // Fetch visible categories
-    const { category_list } = await ajax("/categories.json");
-    const all = category_list.categories;
+  api.addSidebarPanel("projects", function () {
+    console.log("⚙️ Building Projects panel...");
 
-    // Top-level categories
-    const top = all.filter((c) => !c.parent_category_id);
+    // Return a promise manually instead of using async function
+    return ajax("/categories.json").then(({ category_list }) => {
+      const all = category_list.categories;
+      const top = all.filter((c) => !c.parent_category_id);
 
-    // Build sections
-    const sections = top.map((cat) => {
-      const subs = all.filter((s) => s.parent_category_id === cat.id);
-      if (!subs.length) return null;
+      const sections = top
+        .map((cat) => {
+          const subs = all.filter((s) => s.parent_category_id === cat.id);
+          if (!subs.length) return null;
 
-      const links = subs.map(
-        (s) =>
-          new SidebarSectionLink({
-            name: `cat-${s.slug}`,
-            title: s.name,
-            route: "discovery.category",
-            models: [s.slug],
-            icon: "folder",
-          })
-      );
+          const links = subs.map(
+            (s) =>
+              new SidebarSectionLink({
+                name: `cat-${s.slug}`,
+                title: s.name,
+                route: "discovery.category",
+                models: [s.slug],
+                icon: "folder",
+              })
+          );
 
-      return new SidebarSection({
-        name: `cat-${cat.slug}`,
-        title: cat.name,
-        icon: "folder-tree",
-        links,
+          return new SidebarSection({
+            name: `cat-${cat.slug}`,
+            title: cat.name,
+            icon: "folder-tree",
+            links,
+          });
+        })
+        .filter(Boolean);
+
+      return new SidebarPanel({
+        name: "projects",
+        title: "Projects",
+        icon: "diagram-project",
+        sections,
       });
-    }).filter(Boolean);
-
-    // Build panel object
-    return new SidebarPanel({
-      name: "projects",
-      title: "Projects",
-      icon: "diagram-project",
-      sections,
     });
   });
 });
