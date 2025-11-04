@@ -1,28 +1,28 @@
 import { apiInitializer } from "discourse/lib/api";
 import { ajax } from "discourse/lib/ajax";
 import { SidebarSection, SidebarSectionLink } from "discourse/lib/sidebar/section";
+import EmberObject, { set } from "@ember/object";
 
 export default apiInitializer("1.9.0", (api) => {
-  console.log("🧩 Dynamic Sidebar v3.5.2 — sections injector");
+  console.log("🧩 Dynamic Sidebar (tracked-safe injector)");
 
   async function buildDynamicSidebar() {
     const sidebar = api.container.lookup("service:sidebar-state");
     const panel = sidebar.panels?.[0];
     if (!panel || !panel.sections) {
-      console.warn("⚠️ No sidebar sections available yet");
+      console.warn("⚠️ Sidebar not ready");
       return;
     }
 
-    // fetch all categories
     const { category_list } = await ajax("/categories.json");
-    const allCats = category_list.categories;
-    const topCats = allCats.filter((c) => !c.parent_category_id);
+    const all = category_list.categories;
+    const top = all.filter((c) => !c.parent_category_id);
 
-    // remove old dynamic sections (optional safety)
-    panel.sections = panel.sections.filter((s) => !s.name?.startsWith("dynamic-"));
+    // create a copy of current sections (tracked-safe)
+    const newSections = [...panel.sections.filter((s) => !s.name?.startsWith("dynamic-"))];
 
-    for (const cat of topCats) {
-      const subs = allCats.filter((s) => s.parent_category_id === cat.id);
+    for (const cat of top) {
+      const subs = all.filter((s) => s.parent_category_id === cat.id);
       if (!subs.length) continue;
 
       const links = subs.map(
@@ -43,12 +43,15 @@ export default apiInitializer("1.9.0", (api) => {
         icon: "folder-tree",
       });
 
-      panel.sections.push(section);
-      console.log(`✅ Injected sidebar section for: ${cat.name}`);
+      newSections.push(section);
+      console.log(`✅ Built section for: ${cat.name}`);
     }
 
+    // use Ember.set to notify reactivity
+    set(panel, "sections", newSections);
+
     sidebar.appEvents?.trigger?.("sidebar:refresh");
-    console.log("🎯 Sidebar refreshed with dynamic project sections");
+    console.log("🎯 Sidebar refreshed with dynamic sections");
   }
 
   api.onAppEvent("sidebar:initialized", buildDynamicSidebar);
