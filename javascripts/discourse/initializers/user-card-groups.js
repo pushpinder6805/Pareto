@@ -1,46 +1,48 @@
 // /javascripts/discourse/initializers/user-card-groups.js
 import { withPluginApi } from "discourse/lib/plugin-api";
 import { ajax } from "discourse/lib/ajax";
+import { h } from "virtual-dom";
 
 export default {
   name: "user-card-groups",
   initialize() {
-    withPluginApi("1.32.0", (api) => {
-      api.decorateWidget("user-card:after-details", (helper) => {
-        const user = helper.attrs?.user;
+    withPluginApi("1.40.0", (api) => {
+      api.decorateUserCard((user, card) => {
         if (!user?.username) return;
 
-        const container = document.createElement("div");
-        container.className = "user-card-groups";
-        container.textContent = "Loading groups…";
+        const div = document.createElement("div");
+        div.className = "user-card-groups";
+        div.textContent = "Loading groups…";
 
         ajax(`/u/${user.username}.json`)
           .then((result) => {
             const groups = result?.user?.groups || [];
-            container.innerHTML = "";
+            div.innerHTML = "";
 
             if (groups.length) {
-              const label = document.createElement("strong");
-              label.textContent = "Groups: ";
-              container.appendChild(label);
+              const strong = document.createElement("strong");
+              strong.textContent = "Groups: ";
+              div.appendChild(strong);
 
               groups.forEach((g, i) => {
                 const a = document.createElement("a");
                 a.href = `/g/${g.name}`;
                 a.className = "group-link";
                 a.textContent = g.name;
-                container.appendChild(a);
+                div.appendChild(a);
                 if (i < groups.length - 1) {
-                  container.append(", ");
+                  div.append(", ");
                 }
               });
+            } else {
+              div.textContent = "";
             }
           })
           .catch(() => {
-            container.textContent = "";
+            div.textContent = "";
           });
 
-        return container.outerHTML;
+        card.append(div);
       });
     });
   },
