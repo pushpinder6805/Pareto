@@ -5,14 +5,14 @@ export default {
     const username = args.model?.user?.username;
     if (!username) return;
 
-    ajax(`/u/${username}.json`)
-      .then((data) => {
-        const groups = data?.user?.groups || [];
-        if (!groups.length) return;
-
-        component.set("userGroups", groups);
-      })
-      .catch(() => {});
+    ajax(`/u/${username}.json`).then((data) => {
+      const groups = data?.user?.groups?.filter(
+        (g) => !["trust_level_0", "everyone"].includes(g.name)
+      );
+      if (groups?.length) {
+        component.set("groups", groups);
+      }
+    });
   },
 };
 
