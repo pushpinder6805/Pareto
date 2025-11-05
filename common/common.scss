@@ -20,3 +20,30 @@
   font-size: 13px;
   color: inherit;
 }
+
+.sidebar-sections {display: flex !important;flex-direction: column !important;}
+.sidebar-custom-sections {display: flex !important;flex-direction: column !important;}
+.sidebar-sections > * {order: 0 !important;}
+[data-section-name="user-threads"] { order: -7 !important; }
+[data-section-name="chat-channels"] { order: -6 !important; }
+[data-section-name="community"] { order: 1 !important; }
+[data-section-name="chat-dms"] { order: -4 !important; }
+[data-section-name="categories"] { order: -3 !important; }
+[data-section-name="tags"] { order: 1 !important; }
+
+
+td.posters.topic-list-data a[data-user-card] {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+td.posters.topic-list-data a[data-user-card]::after {
+  content: attr(data-user-card);
+  font-size: 0.85em;
+  color: var(--primary-high);
+  white-space: nowrap;
+  text-transform: none;
+}
+
