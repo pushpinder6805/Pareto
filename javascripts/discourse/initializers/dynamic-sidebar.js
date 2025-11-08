@@ -19,6 +19,7 @@ export default apiInitializer("1.19.0", (api) => {
       return;
     }
 
+    // Build dynamic sections
     const top = cats
       .filter((c) => !c.parent_category_id)
       .sort((a, b) => (a.position || 0) - (b.position || 0));
@@ -51,13 +52,30 @@ export default apiInitializer("1.19.0", (api) => {
       html += `</ul></div>`;
     });
 
-    // remove any old injected sections first
+    // Remove old injected sections
     sidebar.querySelectorAll(".sidebar-section--custom").forEach((el) => el.remove());
 
-    sidebar.insertAdjacentHTML("beforeend", html);
+    // Find reference points
+    const allSections = sidebar.querySelectorAll(".sidebar-section");
+    let insertBefore = null;
+
+    allSections.forEach((sec) => {
+      const title = sec.querySelector(".sidebar-section-header-text, .sidebar-section-title");
+      if (title) {
+        const text = title.textContent.trim().toLowerCase();
+        if (text.includes("community")) insertBefore = sec;
+      }
+    });
+
+    // Insert at correct position
+    if (insertBefore) {
+      insertBefore.insertAdjacentHTML("beforebegin", html);
+    } else {
+      sidebar.insertAdjacentHTML("beforeend", html);
+    }
   }
 
-  // wait for sidebar + categories to load
+  // Run after load
   setTimeout(injectSidebarHTML, 1000);
 });
 
