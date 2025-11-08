@@ -1,90 +1,81 @@
-// /javascripts/discourse/initializers/dynamic-sidebar.js
 import { apiInitializer } from "discourse/lib/api";
 
 export default apiInitializer("1.19.0", (api) => {
+  const canDecorate = typeof api.decorateSidebar === "function";
+
+  if (!canDecorate) return;
+
   const site =
     api.container.lookup?.("service:site") ||
     api.container.lookup?.("site:main") ||
     api.site;
 
-  function buildCategoryHTML() {
-    const cats = site?.categories || [];
-    if (!cats.length) return "";
-
-    const top = cats
-      .filter((c) => !c.parent_category_id)
-      .sort((a, b) => (a.position || 0) - (b.position || 0));
-
-    let html = '<div id="dynamic-category-sections">';
-    top.forEach((p) => {
-      html += `
-        <div class="sidebar-section sidebar-section--custom">
-          <div class="sidebar-section-header">
-            <a href="/c/${p.slug}/${p.id}" class="sidebar-section-title">${p.name}</a>
-          </div>
-          <ul class="sidebar-section-content">
-      `;
-      const subs = cats
-        .filter((s) => s.parent_category_id === p.id)
-        .sort((a, b) => (a.position || 0) - (b.position || 0));
-      subs.forEach((s) => {
-        html += `
-          <li class="sidebar-section-link">
-            <a href="/c/${s.slug}/${s.id}">↳ ${s.name}</a>
-          </li>
-        `;
-      });
-      html += `</ul></div>`;
-    });
-    html += "</div>";
-    return html;
+  function getCategories() {
+    const cats = site?.categories;
+    return Array.isArray(cats) ? cats : [];
   }
 
-  function insertSections() {
-    const sidebar = document.querySelector(".sidebar-container, .sidebar");
-    if (!sidebar) return;
-
-    // remove old injected block
-    const old = document.getElementById("dynamic-category-sections");
-    if (old) old.remove();
-
-    const html = buildCategoryHTML();
-    if (!html) return;
-
-    const sections = Array.from(sidebar.querySelectorAll(".sidebar-section"));
-    const community = sections.find((sec) => {
-      const title = sec.querySelector(".sidebar-section-header-text, .sidebar-section-title");
-      return title && title.textContent.trim().toLowerCase().includes("community");
+  function sortedTopAndSubs(all) {
+    const byPos = (a, b) => (a.position || 0) - (b.position || 0);
+    const top = all.filter((c) => !c.parent_category_id).sort(byPos);
+    const subsByParent = new Map();
+    
+    all.forEach((c) => {
+      if (c.parent_category_id) {
+        if (!subsByParent.has(c.parent_category_id)) {
+          subsByParent.set(c.parent_category_id, []);
+        }
+        subsByParent.get(c.parent_category_id).push(c);
+      }
     });
-
-    // Insert before “Community” if found, else at end
-    if (community) {
-      community.insertAdjacentHTML("beforebegin", html);
-    } else {
-      sidebar.insertAdjacentHTML("beforeend", html);
-    }
+    
+    subsByParent.forEach((arr, k) => {
+      subsByParent.set(k, arr.sort(byPos));
+    });
+    
+    return { top, subsByParent };
   }
 
-  // observe only after app ready and DOM settled
-  function startObserver() {
-    const sidebar = document.querySelector(".sidebar-container, .sidebar");
-    if (!sidebar) {
-      setTimeout(startObserver, 800);
+  function buildSections(all) {
+    const { top, subsByParent } = sortedTopAndSubs(all);
+    
+    return top.map((parent) => {
+      const subs = subsByParent.get(parent.id) || [];
+      
+      return {
+        name: `category-section-${parent.id}`,
+        title: parent.name,
+        links: [
+          {
+            name: `category-${parent.id}`,
+            title: parent.name,
+            href: `/c/${parent.slug}/${parent.id}`,
+          },
+          ...subs.map((sub) => ({
+            name: `category-${sub.id}`,
+            title: sub.name,
+            href: `/c/${sub.slug}/${sub.id}`,
+          })),
+        ],
+      };
+    });
+  }
+
+  function renderOnceCategoriesAvailable(tries = 0) {
+    const all = getCategories();
+    
+    if (!all.length) {
+      if (tries > 20) return;
+      setTimeout(() => renderOnceCategoriesAvailable(tries + 1), 300);
       return;
     }
 
-    const observer = new MutationObserver(() => {
-      // run in next microtask so Ember click delegation remains intact
-      queueMicrotask(insertSections);
+    api.decorateSidebar((widgets) => {
+      const sections = buildSections(all);
+      return [...widgets, ...sections];
     });
-
-    observer.observe(sidebar, { childList: true });
-    insertSections();
   }
 
-  // delay to let Ember bind events
-  window.addEventListener("load", () => {
-    setTimeout(startObserver, 1200);
-  });
+  renderOnceCategoriesAvailable();
 });
 
