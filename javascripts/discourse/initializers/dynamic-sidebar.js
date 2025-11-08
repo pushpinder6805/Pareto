@@ -1,4 +1,4 @@
-/*
+
 import { apiInitializer } from "discourse/lib/api";
 
 export default apiInitializer("1.19.0", (api) => {
@@ -84,7 +84,7 @@ export default apiInitializer("1.19.0", (api) => {
     const html = buildSections();
     if (!html) return;
 
-    // remove previous injected block
+
     const old = document.getElementById("dynamic-category-sections");
     if (old) old.remove();
 
@@ -126,7 +126,7 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
-  // wait until sidebar + categories are ready
+
   const waitUntilReady = () => {
     const sidebar = document.querySelector(".sidebar, .sidebar-container");
     if (!sidebar || !(site?.categories?.length)) {
@@ -138,5 +138,3 @@ export default apiInitializer("1.19.0", (api) => {
 
   waitUntilReady();
 });
-
- */
