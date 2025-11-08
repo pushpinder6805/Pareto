@@ -1,30 +1,48 @@
 import { apiInitializer } from "discourse/lib/api";
-import { ajax } from "discourse/lib/ajax";
 
-export default apiInitializer("1.9.0", async (api) => {
-  console.log("🧩 Dynamic Sidebar v3.5.2+ live");
+export default apiInitializer("1.6.0", (api) => {
+  const currentUser = api.getCurrentUser();
+  if (!currentUser) return; // Guests excluded unless desired
 
-  const { category_list } = await ajax("/categories.json");
-  const all = category_list.categories;
-  const top = all.filter((c) => !c.parent_category_id);
+  const store = api.container.lookup("store:main");
 
-  for (const cat of top) {
-    const subs = all.filter((s) => s.parent_category_id === cat.id);
-    if (!subs.length) continue;
+  api.decorateSidebar((helper) => {
+    // Get all categories visible to this user
+    const allCategories = store.peekAll("category").filter(
+      (c) => !c.permission_denied && !c.read_restricted
+    );
 
-    api.addSidebarSection(`project-${cat.slug}`, {
-      title: cat.name,
-      icon: "folder-tree",
-      links: subs.map((s) => ({
-        route: "discovery.category",
-        models: [s.slug],
-        title: s.name,
-        name: `project-${s.slug}`,
-        icon: "folder",
-      })),
+    // Filter top-level categories
+    const topCategories = allCategories
+      .filter((c) => !c.parent_category_id)
+      .sortBy("position");
+
+    // Build sections
+    const sections = topCategories.map((parent) => {
+      const subcats = allCategories
+        .filter((sub) => sub.parent_category_id === parent.id)
+        .sortBy("position");
+
+      // Each top-level category becomes a sidebar section
+      return {
+        name: `category-${parent.id}`,
+        title: parent.name,
+        links: [
+          {
+            name: `category-${parent.slug}`,
+            title: parent.name,
+            href: `/c/${parent.slug}/${parent.id}`,
+          },
+          ...subcats.map((sub) => ({
+            name: `subcategory-${sub.slug}`,
+            title: `↳ ${sub.name}`,
+            href: `/c/${sub.slug}/${sub.id}`,
+          })),
+        ],
+      };
     });
 
-    console.log(`📁 Registered sidebar section: ${cat.name}`);
-  }
+    return sections;
+  });
 });
 
