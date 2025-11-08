@@ -16,10 +16,19 @@ export default apiInitializer("1.19.0", (api) => {
 
     let html = '<div id="dynamic-category-sections">';
     top.forEach((parent) => {
+      const subs = cats
+        .filter((s) => s.parent_category_id === parent.id)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+      const hasSubs = subs.length > 0;
+
       html += `
         <div class="sidebar-section sidebar-section-wrapper sidebar-section--expanded sidebar-parent-category"
              data-section-name="${parent.slug}">
-          <div class="sidebar-section-header-wrapper sidebar-row">
+          <div class="sidebar-section-header-wrapper sidebar-row">`;
+
+      if (hasSubs) {
+        html += `
             <button class="btn sidebar-section-header sidebar-section-header-collapsable btn-transparent"
                     data-target="#sidebar-section-content-${parent.slug}"
                     aria-controls="sidebar-section-content-${parent.slug}"
@@ -30,15 +39,23 @@ export default apiInitializer("1.19.0", (api) => {
                 <svg class="fa d-icon d-icon-angle-down svg-icon svg-string"><use href="#angle-down"></use></svg>
               </span>
               <span class="sidebar-section-header-text">${parent.name}</span>
-            </button>
+            </button>`;
+      } else {
+        html += `
+            <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header sidebar-section-header-link sidebar-row">
+              <span class="sidebar-section-header-caret">
+                <svg class="fa d-icon d-icon-link svg-icon svg-string"><use href="#link"></use></svg>
+              </span>
+              <span class="sidebar-section-header-text">${parent.name}</span>
+            </a>`;
+      }
+
+      html += `
           </div>
-
-          <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content">
+          <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" ${
+            hasSubs ? "" : 'style="display:none;"'
+          }>
       `;
-
-      const subs = cats
-        .filter((s) => s.parent_category_id === parent.id)
-        .sort((a, b) => (a.position || 0) - (b.position || 0));
 
       subs.forEach((sub) => {
         html += `
@@ -66,7 +83,7 @@ export default apiInitializer("1.19.0", (api) => {
     const html = buildSections();
     if (!html) return;
 
-    // remove previously injected block
+    // remove previous injected block
     const old = document.getElementById("dynamic-category-sections");
     if (old) old.remove();
 
@@ -85,7 +102,7 @@ export default apiInitializer("1.19.0", (api) => {
 
   function enableCollapsing() {
     const toggles = document.querySelectorAll(
-      "#dynamic-category-sections .sidebar-section-header"
+      "#dynamic-category-sections .sidebar-section-header-collapsable"
     );
 
     toggles.forEach((btn) => {
