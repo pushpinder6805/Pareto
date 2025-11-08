@@ -40,38 +40,43 @@ export default apiInitializer("1.19.0", (api) => {
     return html;
   }
 
-  function tryInsert() {
-    const sidebar =
-      document.querySelector(".sidebar-container") ||
-      document.querySelector(".sidebar");
+  function injectWhenSidebarReady() {
+    const sidebar = document.querySelector(".sidebar, .sidebar-container");
     const cats = site?.categories || [];
     if (!sidebar || !cats.length) {
-      // try again until both are ready
-      setTimeout(tryInsert, 700);
+      setTimeout(injectWhenSidebarReady, 800);
       return;
     }
 
-    // remove any old block first
+    // wait for built-in sections like "Community" to appear
+    const community = Array.from(
+      sidebar.querySelectorAll(".sidebar-section-header-text, .sidebar-section-title")
+    ).find((el) => el.textContent.trim().toLowerCase().includes("community"));
+
+    if (!community) {
+      setTimeout(injectWhenSidebarReady, 800);
+      return;
+    }
+
+    // remove previous injected block only
     const old = document.getElementById("dynamic-category-sections");
     if (old) old.remove();
 
+    // build HTML and insert before "Community" section
     const html = buildCategoryHTML();
-    if (!html) return;
-
-    const sections = Array.from(sidebar.querySelectorAll(".sidebar-section"));
-    const community = sections.find((sec) => {
-      const title = sec.querySelector(".sidebar-section-header-text, .sidebar-section-title");
-      return title && title.textContent.trim().toLowerCase().includes("community");
-    });
-
-    if (community) {
-      community.insertAdjacentHTML("beforebegin", html);
-    } else {
-      sidebar.insertAdjacentHTML("beforeend", html);
+    const communitySection = community.closest(".sidebar-section");
+    if (communitySection && html) {
+      communitySection.insertAdjacentHTML("beforebegin", html);
     }
   }
 
-  // run continuously until categories + sidebar ready
-  setTimeout(tryInsert, 1000);
+  // re-check repeatedly until the theme finishes rendering its sidebar
+  const observerInterval = setInterval(() => {
+    injectWhenSidebarReady();
+    // stop after successful insertion
+    if (document.getElementById("dynamic-category-sections")) {
+      clearInterval(observerInterval);
+    }
+  }, 1000);
 });
 
