@@ -1,39 +1,44 @@
-// /javascripts/discourse/initializers/dynamic-sidebar.js
 import { apiInitializer } from "discourse/lib/api";
 
 export default apiInitializer("1.19.0", (api) => {
-  // sidebar APIs vary by version
+  // detect which sidebar API exists
   const canDecorate = typeof api.decorateSidebar === "function";
   const canAdd = typeof api.addSidebarSection === "function";
 
   if (!canDecorate && !canAdd) return;
 
-  // site service has the permission-filtered categories for the current user
-  // prefer service:site; fall back to site:main if present in your build
+  // use site service (already permission-filtered)
   const site =
     api.container.lookup?.("service:site") ||
     api.container.lookup?.("site:main") ||
     api.site;
 
+  // helper to safely get categories
   function getCategories() {
     const cats = site?.categories;
     return Array.isArray(cats) ? cats : [];
   }
 
+  // sort helpers
   function sortedTopAndSubs(all) {
     const byPos = (a, b) => (a.position || 0) - (b.position || 0);
     const top = all.filter((c) => !c.parent_category_id).slice().sort(byPos);
     const subsByParent = new Map();
     all.forEach((c) => {
       if (c.parent_category_id) {
-        if (!subsByParent.has(c.parent_category_id)) subsByParent.set(c.parent_category_id, []);
+        if (!subsByParent.has(c.parent_category_id)) {
+          subsByParent.set(c.parent_category_id, []);
+        }
         subsByParent.get(c.parent_category_id).push(c);
       }
     });
-    for (const [k, arr] of subsByParent) subsByParent.set(k, arr.slice().sort(byPos));
+    for (const [k, arr] of subsByParent) {
+      subsByParent.set(k, arr.slice().sort(byPos));
+    }
     return { top, subsByParent };
   }
 
+  // build flat link list (for old addSidebarSection)
   function buildLinks(all) {
     const { top, subsByParent } = sortedTopAndSubs(all);
     const links = [];
@@ -55,6 +60,7 @@ export default apiInitializer("1.19.0", (api) => {
     return links;
   }
 
+  // build nested section objects (for new decorateSidebar)
   function buildSections(all) {
     const { top, subsByParent } = sortedTopAndSubs(all);
     return top.map((p) => {
@@ -78,10 +84,11 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
+  // build once categories are available
   function renderOnceCategoriesAvailable(tries = 0) {
     const all = getCategories();
     if (!all.length) {
-      if (tries > 20) return; // stop after ~6s
+      if (tries > 20) return; // stop retrying after ~6s
       setTimeout(() => renderOnceCategoriesAvailable(tries + 1), 300);
       return;
     }
@@ -89,12 +96,10 @@ export default apiInitializer("1.19.0", (api) => {
     if (canDecorate) {
       api.decorateSidebar(() => buildSections(all));
     } else if (canAdd) {
-      // Older API: single section with all links
       api.addSidebarSection({
         name: "dynamic-categories",
         title: "Categories",
-        // Some builds expect links as an array, not a function
-        links: buildLinks(all),
+        links: () => buildLinks(all), // must be a function
       });
     }
   }
