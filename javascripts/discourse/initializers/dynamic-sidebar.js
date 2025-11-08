@@ -1,81 +1,77 @@
+// /javascripts/discourse/initializers/dynamic-sidebar.js
 import { apiInitializer } from "discourse/lib/api";
 
 export default apiInitializer("1.19.0", (api) => {
-  const canDecorate = typeof api.decorateSidebar === "function";
-
-  if (!canDecorate) return;
-
   const site =
     api.container.lookup?.("service:site") ||
     api.container.lookup?.("site:main") ||
     api.site;
 
-  function getCategories() {
-    const cats = site?.categories;
-    return Array.isArray(cats) ? cats : [];
+  function buildCategoryHTML() {
+    const cats = site?.categories || [];
+    if (!cats.length) return "";
+
+    const top = cats
+      .filter((c) => !c.parent_category_id)
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    let html = '<div id="dynamic-category-sections">';
+    top.forEach((p) => {
+      html += `
+        <div class="sidebar-section sidebar-section--custom">
+          <div class="sidebar-section-header">
+            <a href="/c/${p.slug}/${p.id}" class="sidebar-section-title">${p.name}</a>
+          </div>
+          <ul class="sidebar-section-content">
+      `;
+      const subs = cats
+        .filter((s) => s.parent_category_id === p.id)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+      subs.forEach((s) => {
+        html += `
+          <li class="sidebar-section-link">
+            <a href="/c/${s.slug}/${s.id}">↳ ${s.name}</a>
+          </li>
+        `;
+      });
+      html += `</ul></div>`;
+    });
+    html += "</div>";
+    return html;
   }
 
-  function sortedTopAndSubs(all) {
-    const byPos = (a, b) => (a.position || 0) - (b.position || 0);
-    const top = all.filter((c) => !c.parent_category_id).sort(byPos);
-    const subsByParent = new Map();
-    
-    all.forEach((c) => {
-      if (c.parent_category_id) {
-        if (!subsByParent.has(c.parent_category_id)) {
-          subsByParent.set(c.parent_category_id, []);
-        }
-        subsByParent.get(c.parent_category_id).push(c);
-      }
-    });
-    
-    subsByParent.forEach((arr, k) => {
-      subsByParent.set(k, arr.sort(byPos));
-    });
-    
-    return { top, subsByParent };
-  }
-
-  function buildSections(all) {
-    const { top, subsByParent } = sortedTopAndSubs(all);
-    
-    return top.map((parent) => {
-      const subs = subsByParent.get(parent.id) || [];
-      
-      return {
-        name: `category-section-${parent.id}`,
-        title: parent.name,
-        links: [
-          {
-            name: `category-${parent.id}`,
-            title: parent.name,
-            href: `/c/${parent.slug}/${parent.id}`,
-          },
-          ...subs.map((sub) => ({
-            name: `category-${sub.id}`,
-            title: sub.name,
-            href: `/c/${sub.slug}/${sub.id}`,
-          })),
-        ],
-      };
-    });
-  }
-
-  function renderOnceCategoriesAvailable(tries = 0) {
-    const all = getCategories();
-    
-    if (!all.length) {
-      if (tries > 20) return;
-      setTimeout(() => renderOnceCategoriesAvailable(tries + 1), 300);
+  function tryInsert() {
+    const sidebar =
+      document.querySelector(".sidebar-container") ||
+      document.querySelector(".sidebar");
+    const cats = site?.categories || [];
+    if (!sidebar || !cats.length) {
+      // try again until both are ready
+      setTimeout(tryInsert, 700);
       return;
     }
 
-    api.decorateSidebar((widgets) => {
-      const sections = buildSections(all);
-      return [...widgets, ...sections];
+    // remove any old block first
+    const old = document.getElementById("dynamic-category-sections");
+    if (old) old.remove();
+
+    const html = buildCategoryHTML();
+    if (!html) return;
+
+    const sections = Array.from(sidebar.querySelectorAll(".sidebar-section"));
+    const community = sections.find((sec) => {
+      const title = sec.querySelector(".sidebar-section-header-text, .sidebar-section-title");
+      return title && title.textContent.trim().toLowerCase().includes("community");
     });
+
+    if (community) {
+      community.insertAdjacentHTML("beforebegin", html);
+    } else {
+      sidebar.insertAdjacentHTML("beforeend", html);
+    }
   }
 
-  renderOnceCategoriesAvailable();
+  // run continuously until categories + sidebar ready
+  setTimeout(tryInsert, 1000);
 });
 
