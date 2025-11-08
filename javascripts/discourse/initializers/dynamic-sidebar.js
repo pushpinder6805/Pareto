@@ -6,15 +6,20 @@ export default apiInitializer("1.19.0", (api) => {
 
   const store = api.container.lookup("store:main");
 
-  // Wait until category data is ready
-  api.onAppEvent("store:loaded", () => {
-    api.decorateSidebar((helper) => {
-      const all = store.peekAll("category").filter(
-        (c) => !c.permission_denied && !c.read_restricted
-      );
+  function buildSections() {
+    const all = store.peekAll("category").filter(
+      (c) => !c.permission_denied && !c.read_restricted
+    );
 
-      const top = all.filter((c) => !c.parent_category_id).sortBy("position");
+    if (!all.length) {
+      // categories not ready yet — try again shortly
+      setTimeout(buildSections, 500);
+      return;
+    }
 
+    const top = all.filter((c) => !c.parent_category_id).sortBy("position");
+
+    api.decorateSidebar(() => {
       const sections = top.map((parent) => {
         const subs = all
           .filter((s) => s.parent_category_id === parent.id)
@@ -40,6 +45,8 @@ export default apiInitializer("1.19.0", (api) => {
 
       return sections;
     });
-  });
+  }
+
+  buildSections();
 });
 
