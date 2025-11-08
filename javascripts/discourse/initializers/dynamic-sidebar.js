@@ -1,103 +1,63 @@
 import { apiInitializer } from "discourse/lib/api";
 
 export default apiInitializer("1.19.0", (api) => {
-  const canDecorate = typeof api.decorateSidebar === "function";
-  const canAdd = typeof api.addSidebarSection === "function";
-  if (!canDecorate && !canAdd) return;
-
   const site =
     api.container.lookup?.("service:site") ||
     api.container.lookup?.("site:main") ||
     api.site;
 
-  const getCategories = () =>
-    Array.isArray(site?.categories) ? site.categories : [];
-
-  const sortCats = (a, b) => (a.position || 0) - (b.position || 0);
-
-  function structure(all) {
-    const top = all.filter((c) => !c.parent_category_id).slice().sort(sortCats);
-    const subsByParent = new Map();
-    all.forEach((c) => {
-      if (c.parent_category_id) {
-        if (!subsByParent.has(c.parent_category_id))
-          subsByParent.set(c.parent_category_id, []);
-        subsByParent.get(c.parent_category_id).push(c);
-      }
-    });
-    for (const arr of subsByParent.values()) arr.sort(sortCats);
-    return { top, subsByParent };
-  }
-
-  function buildLinks(all) {
-    const { top, subsByParent } = structure(all);
-    const out = [];
-    top.forEach((p) => {
-      out.push({
-        name: `cat-${p.id}`,
-        title: p.name,
-        href: `/c/${p.slug}/${p.id}`,
-      });
-      (subsByParent.get(p.id) || []).forEach((s) =>
-        out.push({
-          name: `sub-${s.id}`,
-          title: `↳ ${s.name}`,
-          href: `/c/${s.slug}/${s.id}`,
-        })
-      );
-    });
-    return out;
-  }
-
-  function buildSections(all) {
-    const { top, subsByParent } = structure(all);
-    return top.map((p) => ({
-      name: `cat-${p.id}`,
-      title: p.name,
-      links: [
-        {
-          name: `cat-main-${p.id}`,
-          title: p.name,
-          href: `/c/${p.slug}/${p.id}`,
-        },
-        ...(subsByParent.get(p.id) || []).map((s) => ({
-          name: `sub-${s.id}`,
-          title: `↳ ${s.name}`,
-          href: `/c/${s.slug}/${s.id}`,
-        })),
-      ],
-    }));
-  }
-
-  function render(tries = 0) {
-    const all = getCategories();
-    if (!all.length) {
-      if (tries < 20) setTimeout(() => render(tries + 1), 300);
+  function injectSidebarHTML() {
+    const sidebar = document.querySelector(".sidebar-container, .sidebar");
+    if (!sidebar) {
+      setTimeout(injectSidebarHTML, 500);
       return;
     }
 
-    if (canDecorate) {
-      api.decorateSidebar(() => buildSections(all));
-    } else if (canAdd) {
-      const linksArray = buildLinks(all);
-
-      // try callable form first, fall back to plain array
-      try {
-        api.addSidebarSection({
-          name: "dynamic-categories",
-          title: "Categories",
-          links: () => linksArray,
-        });
-      } catch {
-        api.addSidebarSection({
-          name: "dynamic-categories",
-          title: "Categories",
-          links: linksArray,
-        });
-      }
+    const cats = site?.categories || [];
+    if (!cats.length) {
+      setTimeout(injectSidebarHTML, 500);
+      return;
     }
+
+    const top = cats
+      .filter((c) => !c.parent_category_id)
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    let html = "";
+
+    top.forEach((parent) => {
+      html += `
+        <div class="sidebar-section sidebar-section--custom">
+          <div class="sidebar-section-header">
+            <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-title">
+              ${parent.name}
+            </a>
+          </div>
+          <ul class="sidebar-section-content">
+      `;
+
+      const subs = cats
+        .filter((s) => s.parent_category_id === parent.id)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+      subs.forEach((s) => {
+        html += `
+          <li class="sidebar-section-link">
+            <a href="/c/${s.slug}/${s.id}">↳ ${s.name}</a>
+          </li>
+        `;
+      });
+
+      html += `</ul></div>`;
+    });
+
+    // remove any old injected sections first
+    sidebar.querySelectorAll(".sidebar-section--custom").forEach((el) => el.remove());
+
+    sidebar.insertAdjacentHTML("beforeend", html);
   }
 
-  render();
+  // wait for sidebar + categories to load
+  setTimeout(injectSidebarHTML, 1000);
 });
 
