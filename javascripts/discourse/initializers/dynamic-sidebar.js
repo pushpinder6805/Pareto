@@ -20,10 +20,12 @@ export default apiInitializer("1.19.0", (api) => {
         <div class="sidebar-section sidebar-section-wrapper sidebar-section--expanded sidebar-parent-category"
              data-section-name="${parent.slug}">
           <div class="sidebar-section-header-wrapper sidebar-row">
-            <button class="btn no-text sidebar-section-header sidebar-section-header-collapsable btn-transparent"
+            <button class="btn sidebar-section-header sidebar-section-header-collapsable btn-transparent"
+                    data-target="#sidebar-section-content-${parent.slug}"
                     aria-controls="sidebar-section-content-${parent.slug}"
                     aria-expanded="true"
-                    title="Toggle section" type="button">
+                    title="Toggle section"
+                    type="button">
               <span class="sidebar-section-header-caret">
                 <svg class="fa d-icon d-icon-angle-down svg-icon svg-string"><use href="#angle-down"></use></svg>
               </span>
@@ -68,17 +70,42 @@ export default apiInitializer("1.19.0", (api) => {
     const old = document.getElementById("dynamic-category-sections");
     if (old) old.remove();
 
-    // find main section container
     const container =
       sidebar.querySelector(".sidebar-sections") || sidebar;
-
-    // insert before the first existing section (order 0)
     const firstSection = container.querySelector(".sidebar-section");
+
     if (firstSection) {
       firstSection.insertAdjacentHTML("beforebegin", html);
     } else {
       container.insertAdjacentHTML("afterbegin", html);
     }
+
+    enableCollapsing();
+  }
+
+  function enableCollapsing() {
+    const toggles = document.querySelectorAll(
+      "#dynamic-category-sections .sidebar-section-header"
+    );
+
+    toggles.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const section = btn.closest(".sidebar-section");
+        const target = section.querySelector(".sidebar-section-content");
+        const isExpanded = btn.getAttribute("aria-expanded") === "true";
+
+        if (isExpanded) {
+          target.style.display = "none";
+          btn.setAttribute("aria-expanded", "false");
+          section.classList.remove("sidebar-section--expanded");
+        } else {
+          target.style.display = "";
+          btn.setAttribute("aria-expanded", "true");
+          section.classList.add("sidebar-section--expanded");
+        }
+      });
+    });
   }
 
   // wait until sidebar + categories are ready
