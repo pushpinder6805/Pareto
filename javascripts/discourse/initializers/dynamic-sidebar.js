@@ -6,42 +6,47 @@ export default apiInitializer("1.6.0", (api) => {
 
   const store = api.container.lookup("store:main");
 
-  api.addSidebarSection({
-    name: "dynamic-categories",
-    title: "Categories",
-    links: () => {
-      const allCategories = store.peekAll("category").filter(
-        (c) => !c.permission_denied && !c.read_restricted
+  api.decorateWidget("sidebar:before", (helper) => {
+    const allCategories = store.peekAll("category").filter(
+      (c) => !c.permission_denied && !c.read_restricted
+    );
+
+    const topCategories = allCategories
+      .filter((c) => !c.parent_category_id)
+      .sortBy("position");
+
+    const html = [];
+
+    topCategories.forEach((parent) => {
+      html.push(
+        `<div class="sidebar-section sidebar-section--custom" data-category-id="${parent.id}">
+          <div class="sidebar-section-header">
+            <a class="sidebar-section-title" href="/c/${parent.slug}/${parent.id}">
+              ${parent.name}
+            </a>
+          </div>
+          <ul class="sidebar-section-content">`
       );
 
-      const topCategories = allCategories
-        .filter((c) => !c.parent_category_id)
+      const subs = allCategories
+        .filter((sub) => sub.parent_category_id === parent.id)
         .sortBy("position");
 
-      const links = [];
-
-      topCategories.forEach((parent) => {
-        links.push({
-          name: `category-${parent.id}`,
-          title: parent.name,
-          href: `/c/${parent.slug}/${parent.id}`,
-        });
-
-        const subs = allCategories
-          .filter((sub) => sub.parent_category_id === parent.id)
-          .sortBy("position");
-
-        subs.forEach((sub) => {
-          links.push({
-            name: `subcategory-${sub.id}`,
-            title: `↳ ${sub.name}`,
-            href: `/c/${sub.slug}/${sub.id}`,
-          });
-        });
+      subs.forEach((sub) => {
+        html.push(
+          `<li class="sidebar-section-link">
+            <a href="/c/${sub.slug}/${sub.id}">
+              ↳ ${sub.name}
+            </a>
+          </li>`
+        );
       });
 
-      return links;
-    },
+      html.push(`</ul></div>`);
+    });
+
+    // Return a Handlebars-safe HTML string
+    return helper.rawHtml(html.join(""));
   });
 });
 
