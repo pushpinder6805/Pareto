@@ -1,3 +1,4 @@
+/*
 import { apiInitializer } from "discourse/lib/api";
 
 export default apiInitializer("1.19.0", (api) => {
@@ -138,3 +139,4 @@ export default apiInitializer("1.19.0", (api) => {
   waitUntilReady();
 });
 
+ */
