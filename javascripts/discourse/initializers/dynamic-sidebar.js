@@ -6,19 +6,17 @@ export default apiInitializer("1.19.0", (api) => {
     api.container.lookup?.("site:main") ||
     api.site;
 
-  // ---- Fetch all chat channels ----
   async function fetchChatChannels() {
     try {
       const response = await fetch("/chat/api/channels.json");
       if (!response.ok) return [];
       const data = await response.json();
-      return data.public_channels || [];
+      return data.channels || []; // ← fixed: was public_channels
     } catch (e) {
       return [];
     }
   }
 
-  // ---- Build the sidebar HTML ----
   async function buildSections() {
     const cats = site?.categories || [];
     if (!cats.length) return "";
@@ -30,13 +28,11 @@ export default apiInitializer("1.19.0", (api) => {
       .sort((a, b) => (a.position || 0) - (b.position || 0));
 
     let html = '<div id="dynamic-category-sections">';
-
     top.forEach((parent) => {
       const subs = cats
         .filter((s) => s.parent_category_id === parent.id)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-      // include chat channels for this category
       const chats = (chatChannels || []).filter(
         (ch) =>
           ch.chatable_type === "Category" && ch.chatable_id === parent.id
@@ -49,7 +45,6 @@ export default apiInitializer("1.19.0", (api) => {
              data-section-name="${parent.slug}">
       `;
 
-      // Parent header (link + toggle)
       if (hasSubs) {
         html += `
           <div class="sidebar-section-header-wrapper sidebar-row">
@@ -84,7 +79,6 @@ export default apiInitializer("1.19.0", (api) => {
         }>
       `;
 
-      // Subcategories
       subs.forEach((sub) => {
         html += `
           <li class="sidebar-section-link-wrapper sidebar-subcategory" data-category-id="${sub.id}">
@@ -97,7 +91,6 @@ export default apiInitializer("1.19.0", (api) => {
           </li>`;
       });
 
-      // Chat channels under this category
       chats.forEach((chat) => {
         html += `
           <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
@@ -117,7 +110,6 @@ export default apiInitializer("1.19.0", (api) => {
     return html;
   }
 
-  // ---- Insert sections into sidebar ----
   async function insertSections() {
     const sidebar = document.querySelector(".sidebar, .sidebar-container");
     if (!sidebar) return;
@@ -128,7 +120,8 @@ export default apiInitializer("1.19.0", (api) => {
     const old = document.getElementById("dynamic-category-sections");
     if (old) old.remove();
 
-    const container = sidebar.querySelector(".sidebar-sections") || sidebar;
+    const container =
+      sidebar.querySelector(".sidebar-sections") || sidebar;
     const firstSection = container.querySelector(".sidebar-section");
 
     if (firstSection) {
@@ -140,7 +133,6 @@ export default apiInitializer("1.19.0", (api) => {
     enableCollapsing();
   }
 
-  // ---- Collapse/expand toggle ----
   function enableCollapsing() {
     const toggles = document.querySelectorAll(
       "#dynamic-category-sections .toggle-button"
@@ -168,7 +160,6 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
-  // ---- Wait for site + sidebar ----
   const waitUntilReady = async () => {
     const sidebar = document.querySelector(".sidebar, .sidebar-container");
     if (!sidebar || !(site?.categories?.length)) {
