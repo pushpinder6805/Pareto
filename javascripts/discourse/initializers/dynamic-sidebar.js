@@ -6,10 +6,22 @@ export default apiInitializer("1.19.0", (api) => {
     api.container.lookup?.("site:main") ||
     api.site;
 
-    function buildSections() {
+    async function fetchChatChannels() {
+      try {
+        const response = await fetch("/chat/api/channels.json");
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.public_channels || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    async function buildSections() {
       const cats = site?.categories || [];
-      const chatChannels = site?.chat_channels || []; // Discourse stores active chat channels here if Chat is enabled
       if (!cats.length) return "";
+
+      const chatChannels = await fetchChatChannels();
 
       const top = cats
         .filter((c) => !c.parent_category_id)
@@ -23,8 +35,9 @@ export default apiInitializer("1.19.0", (api) => {
 
         // include chat channels for this category
         const chats = (chatChannels || []).filter(
-          (ch) => ch.chatable?.type === "Category" && ch.chatable?.id === parent.id
-        );
+          (ch) =>
+                                                  ch.chatable_type === "Category" && ch.chatable_id === parent.id
+);
 
         const hasSubs = subs.length > 0 || chats.length > 0;
 
@@ -99,66 +112,26 @@ export default apiInitializer("1.19.0", (api) => {
       return html;
     }
 
+    async function insertSections() {
+      const sidebar = document.querySelector(".sidebar, .sidebar-container");
+      if (!sidebar) return;
 
-  function insertSections() {
-    const sidebar = document.querySelector(".sidebar, .sidebar-container");
-    if (!sidebar) return;
+      const html = await buildSections();
+      if (!html) return;
 
-    const html = buildSections();
-    if (!html) return;
+      const old = document.getElementById("dynamic-category-sections");
+      if (old) old.remove();
 
-    const old = document.getElementById("dynamic-category-sections");
-    if (old) old.remove();
+      const container =
+        sidebar.querySelector(".sidebar-sections") || sidebar;
+      const firstSection = container.querySelector(".sidebar-section");
 
-    const container =
-      sidebar.querySelector(".sidebar-sections") || sidebar;
-    const firstSection = container.querySelector(".sidebar-section");
+      if (firstSection) {
+        firstSection.insertAdjacentHTML("beforebegin", html);
+      } else {
+        container.insertAdjacentHTML("afterbegin", html);
+      }
 
-    if (firstSection) {
-      firstSection.insertAdjacentHTML("beforebegin", html);
-    } else {
-      container.insertAdjacentHTML("afterbegin", html);
+      enableCollapsing();
     }
-
-    enableCollapsing();
-  }
-
-  function enableCollapsing() {
-    const toggles = document.querySelectorAll(
-      "#dynamic-category-sections .toggle-button"
-    );
-
-    toggles.forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const section = btn.closest(".sidebar-section");
-        const target = section.querySelector(".sidebar-section-content");
-        const isExpanded = btn.getAttribute("aria-expanded") === "true";
-
-        if (isExpanded) {
-          target.style.display = "none";
-          btn.setAttribute("aria-expanded", "false");
-          section.classList.remove("sidebar-section--expanded");
-        } else {
-          target.style.display = "";
-          btn.setAttribute("aria-expanded", "true");
-          section.classList.add("sidebar-section--expanded");
-        }
-      });
-    });
-  }
-
-  const waitUntilReady = () => {
-    const sidebar = document.querySelector(".sidebar, .sidebar-container");
-    if (!sidebar || !(site?.categories?.length)) {
-      setTimeout(waitUntilReady, 800);
-      return;
-    }
-    insertSections();
-  };
-
-  waitUntilReady();
-});
 
