@@ -92,9 +92,12 @@ export default apiInitializer("1.19.0", (api) => {
       });
 
         chats.forEach((chat) => {
+          const slug = chat.chatable?.slug || parent.slug;
+          const chatUrl = `/chat/c/${slug}/${chat.id}`;
+
           html += `
             <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
-              <a href="/chat/channel/${chat.id}" class="sidebar-section-link sidebar-row">
+              <a href="${chatUrl}" class="sidebar-section-link sidebar-row">
                 <span class="sidebar-section-link-prefix icon">
                   <svg class="fa d-icon d-icon-comments svg-icon prefix-icon"><use href="#comments"></use></svg>
                 </span>
@@ -102,6 +105,7 @@ export default apiInitializer("1.19.0", (api) => {
               </a>
             </li>`;
         });
+
 
 
       html += `</ul></div>`;
