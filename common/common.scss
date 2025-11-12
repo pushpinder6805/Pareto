@@ -1,3 +1,57 @@
+#dynamic-category-sections .sidebar-section-wrapper .sidebar-section-header-text {
+  font-size: var(--font-down-2-rem);
+  color: var(--d-sidebar-header-color) !important;
+  font-weight: var(--d-sidebar-header-font-weight);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+
+#dynamic-category-sections,
+#dynamic-category-sections a,
+#dynamic-category-sections span,
+#dynamic-category-sections svg {
+  color: #000 !important;
+  fill: #000 !important;
+}
+#dynamic-category-sections a:hover {
+  color: #000 !important;
+  text-decoration: underline;
+}
+#dynamic-category-sections .toggle-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #000 !important;
+  fill: #000 !important;
+}
+
+
+.sidebar-section[data-section-name="uncategorized"] {
+  display: none !important;
+}
+.sidebar-section[data-section-name="general"] {
+  display: none !important;
+}
+.sidebar-section[data-section-name="feedback-suggestions"] {
+  display: none !important;
+}
+.sidebar-section[data-section-name="announcements"] {
+  display: none !important;
+}
+.sidebar-section[data-section-name="pareto-community"] {
+  display: none !important;
+}
+.sidebar-section[data-section-name="polls-and-questions"] {
+  display: none !important;
+}
+.sidebar-section[data-section-name="frequently-ask-questions"] {
+  display: none !important;
+}
+.sidebar-section[data-section-name="pareto-support"] {
+  display: none !important;
+}
+
 .user-card-groups .group-link {
     padding: 3px 8px;
     color: var(--primary) !important;
