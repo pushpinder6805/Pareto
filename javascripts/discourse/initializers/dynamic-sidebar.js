@@ -91,17 +91,18 @@ export default apiInitializer("1.19.0", (api) => {
           </li>`;
       });
 
-      chats.forEach((chat) => {
-        html += `
-          <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
-            <a href="/chat/channel/${chat.id}" class="sidebar-section-link sidebar-row">
-              <span class="sidebar-section-link-prefix icon">
-                <svg class="fa d-icon d-icon-message svg-icon prefix-icon"><use href="#message"></use></svg>
-              </span>
-              <span class="sidebar-section-link-content-text">${chat.title || "Chat"}</span>
-            </a>
-          </li>`;
-      });
+        chats.forEach((chat) => {
+          html += `
+            <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
+              <a href="/chat/channel/${chat.id}" class="sidebar-section-link sidebar-row">
+                <span class="sidebar-section-link-prefix icon">
+                  <svg class="fa d-icon d-icon-comments svg-icon prefix-icon"><use href="#comments"></use></svg>
+                </span>
+                <span class="sidebar-section-link-content-text">${chat.title || "Chat"}</span>
+              </a>
+            </li>`;
+        });
+
 
       html += `</ul></div>`;
     });
