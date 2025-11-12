@@ -6,79 +6,99 @@ export default apiInitializer("1.19.0", (api) => {
     api.container.lookup?.("site:main") ||
     api.site;
 
-  function buildSections() {
-    const cats = site?.categories || [];
-    if (!cats.length) return "";
+    function buildSections() {
+      const cats = site?.categories || [];
+      const chatChannels = site?.chat_channels || []; // Discourse stores active chat channels here if Chat is enabled
+      if (!cats.length) return "";
 
-    const top = cats
-      .filter((c) => !c.parent_category_id)
-      .sort((a, b) => (a.position || 0) - (b.position || 0));
-
-    let html = '<div id="dynamic-category-sections">';
-    top.forEach((parent) => {
-      const subs = cats
-        .filter((s) => s.parent_category_id === parent.id)
+      const top = cats
+        .filter((c) => !c.parent_category_id)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-      const hasSubs = subs.length > 0;
+      let html = '<div id="dynamic-category-sections">';
+      top.forEach((parent) => {
+        const subs = cats
+          .filter((s) => s.parent_category_id === parent.id)
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-      html += `
-        <div class="sidebar-section sidebar-section-wrapper sidebar-section--expanded sidebar-parent-category"
-             data-section-name="${parent.slug}">
-      `;
+        // include chat channels for this category
+        const chats = (chatChannels || []).filter(
+          (ch) => ch.chatable?.type === "Category" && ch.chatable?.id === parent.id
+        );
 
-      if (hasSubs) {
+        const hasSubs = subs.length > 0 || chats.length > 0;
+
         html += `
-          <div class="sidebar-section-header-wrapper sidebar-row">
-            <span class="sidebar-section-header-caret toggle-button"
-                  data-target="#sidebar-section-content-${parent.slug}"
-                  aria-controls="sidebar-section-content-${parent.slug}"
-                  aria-expanded="true"
-                  title="Toggle section">
-              <svg class="fa d-icon d-icon-angle-down svg-icon svg-string"><use href="#angle-down"></use></svg>
-            </span>
-            <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header-text sidebar-section-header-link">
-              ${parent.name}
-            </a>
-          </div>
+          <div class="sidebar-section sidebar-section-wrapper sidebar-section--expanded sidebar-parent-category"
+               data-section-name="${parent.slug}">
         `;
-      } else {
-        html += `
-          <div class="sidebar-section-header-wrapper sidebar-row">
-            <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header sidebar-section-header-link sidebar-row">
-              <span class="sidebar-section-header-caret">
-                <svg class="fa d-icon d-icon-link svg-icon svg-string"><use href="#link"></use></svg>
+
+        if (hasSubs) {
+          html += `
+            <div class="sidebar-section-header-wrapper sidebar-row">
+              <span class="sidebar-section-header-caret toggle-button"
+                    data-target="#sidebar-section-content-${parent.slug}"
+                    aria-controls="sidebar-section-content-${parent.slug}"
+                    aria-expanded="true"
+                    title="Toggle section">
+                <svg class="fa d-icon d-icon-angle-down svg-icon svg-string"><use href="#angle-down"></use></svg>
               </span>
-              <span class="sidebar-section-header-text">${parent.name}</span>
-            </a>
-          </div>
+              <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header-text sidebar-section-header-link">
+                ${parent.name}
+              </a>
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="sidebar-section-header-wrapper sidebar-row">
+              <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header sidebar-section-header-link sidebar-row">
+                <span class="sidebar-section-header-caret">
+                  <svg class="fa d-icon d-icon-link svg-icon svg-string"><use href="#link"></use></svg>
+                </span>
+                <span class="sidebar-section-header-text">${parent.name}</span>
+              </a>
+            </div>
+          `;
+        }
+
+        html += `
+          <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" ${
+            hasSubs ? "" : 'style="display:none;"'
+          }>
         `;
-      }
 
-      html += `
-        <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" ${
-          hasSubs ? "" : 'style="display:none;"'
-        }>
-      `;
+        subs.forEach((sub) => {
+          html += `
+            <li class="sidebar-section-link-wrapper sidebar-subcategory" data-category-id="${sub.id}">
+              <a href="/c/${sub.slug}/${sub.id}" class="sidebar-section-link sidebar-row">
+                <span class="sidebar-section-link-prefix icon">
+                  <svg class="fa d-icon d-icon-angle-right svg-icon prefix-icon"><use href="#angle-right"></use></svg>
+                </span>
+                <span class="sidebar-section-link-content-text">${sub.name}</span>
+              </a>
+            </li>`;
+        });
 
-      subs.forEach((sub) => {
-        html += `
-          <li class="sidebar-section-link-wrapper sidebar-subcategory" data-category-id="${sub.id}">
-            <a href="/c/${sub.slug}/${sub.id}" class="sidebar-section-link sidebar-row">
-              <span class="sidebar-section-link-prefix icon">
-                <svg class="fa d-icon d-icon-angle-right svg-icon prefix-icon"><use href="#angle-right"></use></svg>
-              </span>
-              <span class="sidebar-section-link-content-text">${sub.name}</span>
-            </a>
-          </li>`;
+        // append chat channels under this category
+        chats.forEach((chat) => {
+          html += `
+            <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
+              <a href="/chat/channel/${chat.id}" class="sidebar-section-link sidebar-row">
+                <span class="sidebar-section-link-prefix icon">
+                  <svg class="fa d-icon d-icon-message svg-icon prefix-icon"><use href="#message"></use></svg>
+                </span>
+                <span class="sidebar-section-link-content-text">${chat.title || "Chat"}</span>
+              </a>
+            </li>`;
+        });
+
+        html += `</ul></div>`;
       });
 
-      html += `</ul></div>`;
-    });
+      html += "</div>";
+      return html;
+    }
 
-    html += "</div>";
-    return html;
-  }
 
   function insertSections() {
     const sidebar = document.querySelector(".sidebar, .sidebar-container");
