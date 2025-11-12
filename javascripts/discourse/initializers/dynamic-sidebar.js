@@ -1,4 +1,3 @@
-
 import { apiInitializer } from "discourse/lib/api";
 
 export default apiInitializer("1.19.0", (api) => {
@@ -26,36 +25,40 @@ export default apiInitializer("1.19.0", (api) => {
       html += `
         <div class="sidebar-section sidebar-section-wrapper sidebar-section--expanded sidebar-parent-category"
              data-section-name="${parent.slug}">
-          <div class="sidebar-section-header-wrapper sidebar-row">`;
+      `;
 
       if (hasSubs) {
         html += `
-            <button class="btn sidebar-section-header sidebar-section-header-collapsable btn-transparent"
-                    data-target="#sidebar-section-content-${parent.slug}"
-                    aria-controls="sidebar-section-content-${parent.slug}"
-                    aria-expanded="true"
-                    title="Toggle section"
-                    type="button">
-              <span class="sidebar-section-header-caret">
-                <svg class="fa d-icon d-icon-angle-down svg-icon svg-string"><use href="#angle-down"></use></svg>
-              </span>
-              <span class="sidebar-section-header-text">${parent.name}</span>
-            </button>`;
+          <div class="sidebar-section-header-wrapper sidebar-row">
+            <span class="sidebar-section-header-caret toggle-button"
+                  data-target="#sidebar-section-content-${parent.slug}"
+                  aria-controls="sidebar-section-content-${parent.slug}"
+                  aria-expanded="true"
+                  title="Toggle section">
+              <svg class="fa d-icon d-icon-angle-down svg-icon svg-string"><use href="#angle-down"></use></svg>
+            </span>
+            <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header-text sidebar-section-header-link">
+              ${parent.name}
+            </a>
+          </div>
+        `;
       } else {
         html += `
+          <div class="sidebar-section-header-wrapper sidebar-row">
             <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header sidebar-section-header-link sidebar-row">
               <span class="sidebar-section-header-caret">
                 <svg class="fa d-icon d-icon-link svg-icon svg-string"><use href="#link"></use></svg>
               </span>
               <span class="sidebar-section-header-text">${parent.name}</span>
-            </a>`;
+            </a>
+          </div>
+        `;
       }
 
       html += `
-          </div>
-          <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" ${
-            hasSubs ? "" : 'style="display:none;"'
-          }>
+        <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" ${
+          hasSubs ? "" : 'style="display:none;"'
+        }>
       `;
 
       subs.forEach((sub) => {
@@ -84,7 +87,6 @@ export default apiInitializer("1.19.0", (api) => {
     const html = buildSections();
     if (!html) return;
 
-
     const old = document.getElementById("dynamic-category-sections");
     if (old) old.remove();
 
@@ -103,12 +105,14 @@ export default apiInitializer("1.19.0", (api) => {
 
   function enableCollapsing() {
     const toggles = document.querySelectorAll(
-      "#dynamic-category-sections .sidebar-section-header-collapsable"
+      "#dynamic-category-sections .toggle-button"
     );
 
     toggles.forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
+        e.stopPropagation();
+
         const section = btn.closest(".sidebar-section");
         const target = section.querySelector(".sidebar-section-content");
         const isExpanded = btn.getAttribute("aria-expanded") === "true";
@@ -126,7 +130,6 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
-
   const waitUntilReady = () => {
     const sidebar = document.querySelector(".sidebar, .sidebar-container");
     if (!sidebar || !(site?.categories?.length)) {
@@ -138,3 +141,4 @@ export default apiInitializer("1.19.0", (api) => {
 
   waitUntilReady();
 });
+
