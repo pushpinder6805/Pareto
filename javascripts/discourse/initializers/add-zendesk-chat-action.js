@@ -67,7 +67,7 @@ export default apiInitializer("1.19.0", (api) => {
       btn.className = "chat-message-action create-zendesk-ticket";
       btn.type = "button";
         btn.innerHTML = `
-          <svg class="fa d-icon d-icon-life-ring svg-icon"><use href="#life-ring"></use></svg>
+          <svg class="fa d-icon d-icon-flag svg-icon svg-string" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><use href="#flag"></use></svg>
           <span class="label">Create Zendesk Ticket</span>
         `;
 
