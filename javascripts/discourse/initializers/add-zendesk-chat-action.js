@@ -6,19 +6,14 @@ export default apiInitializer("1.19.0", () => {
   if (!currentUser || !currentUser.staff) return;
 
   function addZendeskButton() {
-    // Find all open chat action containers
     document.querySelectorAll(".chat-message-actions-container").forEach((container) => {
-      // Skip if already added
       if (container.querySelector(".create-zendesk-ticket")) return;
 
-      // Find the 3-dot dropdown details element
       const details = container.querySelector(".more-actions-chat");
       if (!details) return;
-
       const detailsBody = details.querySelector(".select-kit-body");
-      if (!detailsBody) return; // menu not yet open
+      if (!detailsBody) return;
 
-      // Create our menu item wrapper
       const btn = document.createElement("button");
       btn.className = "chat-message-action create-zendesk-ticket";
       btn.type = "button";
@@ -32,45 +27,43 @@ export default apiInitializer("1.19.0", () => {
         e.stopPropagation();
 
         const messageId = container.dataset.id;
-        if (!messageId) return alert("Could not identify message.");
-
         const messageText =
-          document.querySelector(`[data-id='${messageId}'] .chat-message-text`)
-            ?.innerText || "";
+          document.querySelector(`[data-id='${messageId}'] .chat-message-text`)?.innerText || "";
 
-        const description = `${currentUser.username} selected chat message #${messageId}:\n\n${messageText}\n\n${window.location.origin}/chat/message/${messageId}`;
+        // Extract topic_id if possible
+        const topicId =
+          window.Discourse?.Chat?.currentChannel?.chatable?.id || 2495; // fallback topic ID
 
-        fetch("/zendesk/create_ticket", {
+        fetch("/zendesk-plugin/issues", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "X-CSRF-Token": document
               .querySelector("meta[name='csrf-token']")
               ?.getAttribute("content"),
           },
-          body: JSON.stringify({
-            subject: `Chat message #${messageId}`,
-            description,
-            private: false,
+          body: new URLSearchParams({
+            topic_id: topicId,
           }),
         })
           .then((res) => {
             if (!res.ok) throw new Error(`Zendesk API responded ${res.status}`);
             return res.json();
           })
-          .then(() => alert("Zendesk ticket created successfully."))
+          .then((data) => {
+            console.log("Zendesk ticket created:", data);
+            alert("Zendesk ticket created successfully!");
+          })
           .catch((err) => {
             console.error(err);
             alert("Failed to create Zendesk ticket.");
           });
       });
 
-      // Append to the dropdown menu body
       detailsBody.appendChild(btn);
     });
   }
 
-  // Observe DOM for dropdowns opening
   const observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
       m.addedNodes.forEach((node) => {
