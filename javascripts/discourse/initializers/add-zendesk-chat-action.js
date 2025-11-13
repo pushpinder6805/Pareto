@@ -6,20 +6,16 @@ export default apiInitializer("1.19.0", (api) => {
   if (!currentUser || !currentUser.staff) return;
 
   function getCurrentChatChannel() {
-    // Try modern API first
     const fromChat = window.Discourse?.Chat?.currentChannel;
     if (fromChat?.id) return fromChat;
 
-    // Try via container lookup
     try {
       const chatService = window.Discourse.__container__.lookup("service:chat");
-      if (chatService?.activeChannel) return chatService.activeChannel;
       if (chatService?.activeChannel) return chatService.activeChannel;
     } catch (e) {
       console.warn("Chat service lookup failed:", e);
     }
 
-    // Try from Ember stores (rare fallback)
     try {
       const store = window.Discourse.__container__.lookup("service:chat-store");
       if (store?.activeChannel) return store.activeChannel;
@@ -28,6 +24,34 @@ export default apiInitializer("1.19.0", (api) => {
     }
 
     return null;
+  }
+
+  async function resolveMessageAuthor(messageId) {
+    // 1. Try Chat model
+    try {
+      const chatService = window.Discourse.__container__.lookup("service:chat");
+      const messages = chatService?.activeChannel?.messagesManager?.messages;
+      if (messages) {
+        const msg = messages.find((m) => String(m.id) === String(messageId));
+        if (msg?.user?.username) return msg.user.username;
+        if (msg?.user?.name) return msg.user.name;
+      }
+    } catch (e) {
+      console.warn("Chat author lookup via service failed:", e);
+    }
+
+    // 2. Try DOM
+    const messageEl = document.querySelector(`[data-id='${messageId}']`);
+    const domAuthor =
+      messageEl?.querySelector(".chat-message-user__name")?.innerText?.trim() ||
+      messageEl?.querySelector(".username")?.innerText?.trim() ||
+      messageEl?.querySelector("[data-user-card]")?.getAttribute("data-user-card");
+    if (domAuthor) return domAuthor;
+
+    // 3. Fallback to current logged-in user
+    if (User.current()?.username) return User.current().username;
+
+    return "Unknown";
   }
 
   function addZendeskButton() {
@@ -43,7 +67,7 @@ export default apiInitializer("1.19.0", (api) => {
       btn.className = "chat-message-action create-zendesk-ticket";
       btn.type = "button";
       btn.innerHTML = `
-        <svg class="fa d-icon d-icon-life-ring svg-icon"><use href="#life-ring"></use></svg>
+        <svg class="fa d-icon d-icon-ticket-alt svg-icon"><use href="#ticket-alt"></use></svg>
         <span class="label">Create Zendesk Ticket</span>
       `;
 
@@ -53,12 +77,11 @@ export default apiInitializer("1.19.0", (api) => {
 
         const messageId = container.dataset.id;
         const messageEl = document.querySelector(`[data-id='${messageId}']`);
-        const messageText = messageEl?.querySelector(".chat-message-text")?.innerText?.trim() || "(no text)";
-          let messageAuthor =
-            messageEl?.querySelector(".chat-message-user__name")?.innerText?.trim() ||
-            messageEl?.querySelector(".username")?.innerText?.trim() ||
-            messageEl?.querySelector("[data-user-card]")?.getAttribute("data-user-card") ||
-            "Unknown";
+        const messageText =
+          messageEl?.querySelector(".chat-message-text")?.innerText?.trim() || "(no text)";
+
+        // get reliable author
+        const messageAuthor = await resolveMessageAuthor(messageId);
         const chatUrl = `${window.location.origin}/chat/message/${messageId}`;
 
         const chatChannel = getCurrentChatChannel();
@@ -92,11 +115,11 @@ export default apiInitializer("1.19.0", (api) => {
                 ?.getAttribute("content"),
               Accept: "application/json",
             },
-              body: new URLSearchParams({
-                topic_id: 4559, // fixed topic for all Zendesk tickets
-                subject,
-                description: `[Chat Channel: ${channelName} | ID: ${channelId}]\n\n${description}`,
-              }),
+            body: new URLSearchParams({
+              topic_id: 4559, // fixed topic for all Zendesk tickets
+              subject,
+              description: `[Chat Channel: ${channelName} | ID: ${channelId}]\n\n${description}`,
+            }),
           });
 
           const text = await res.text();
@@ -119,10 +142,14 @@ export default apiInitializer("1.19.0", (api) => {
             icon: "check",
           });
 
-          // Optional: open Zendesk ticket in new tab if URL returned
-          if (data.zendesk_url) {
-            window.open(data.zendesk_url, "_blank");
-          }
+          // show "View Ticket" link directly in button
+          const zendeskUrl =
+            data.zendesk_url || "https://paretoai.zendesk.com/agent/tickets/";
+          btn.innerHTML = `
+            <svg class="fa d-icon d-icon-external-link-alt svg-icon"><use href="#external-link-alt"></use></svg>
+            <a href="${zendeskUrl}" target="_blank" class="label" style="color:inherit;text-decoration:none;">View Ticket</a>
+          `;
+          btn.disabled = true;
         } catch (err) {
           console.error("Zendesk ticket creation failed:", err);
           api.showToast?.("Failed to create Zendesk ticket.", {
