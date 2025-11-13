@@ -1,31 +1,68 @@
 import { apiInitializer } from "discourse/lib/api";
+import { registerIcon } from "discourse-common/lib/icon-library";
 import User from "discourse/models/user";
+
+// Ensure icon exists
+registerIcon("life-ring");
 
 export default apiInitializer("1.19.0", (api) => {
   const currentUser = User.current();
   if (!currentUser || !currentUser.staff) return;
 
+  async function ensureTopicForChannel(channelId, channelName) {
+    // Step 1: Try to find a topic with the same title
+    const topicTitle = `[Chat] ${channelName}`;
+    try {
+      const search = await fetch(`/search/query.json?q=${encodeURIComponent(topicTitle)}`);
+      const results = await search.json();
+      const existing = results?.topics?.find((t) => t.title === topicTitle);
+      if (existing) return existing.id;
+    } catch (e) {
+      console.warn("Topic lookup failed:", e);
+    }
+
+    // Step 2: Create a new hidden topic as container
+    try {
+      const res = await fetch("/posts.json", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "X-CSRF-Token": document
+            .querySelector("meta[name='csrf-token']")
+            ?.getAttribute("content"),
+        },
+        body: new URLSearchParams({
+          title: topicTitle,
+          raw: `Internal ticket container for chat channel "${channelName}" (ID ${channelId})`,
+          archetype: "regular",
+          category: 242, // You can change to internal/private category ID
+          visible: false,
+        }),
+      });
+
+      const data = await res.json();
+      if (data?.topic_id) {
+        console.log("Created internal topic for chat channel:", data.topic_id);
+        return data.topic_id;
+      }
+    } catch (e) {
+      console.error("Failed to create internal topic:", e);
+    }
+
+    return null;
+  }
+
   function getCurrentChatChannel() {
-    // Try modern API first
     const fromChat = window.Discourse?.Chat?.currentChannel;
     if (fromChat?.id) return fromChat;
-
-    // Try via container lookup
     try {
       const chatService = window.Discourse.__container__.lookup("service:chat");
       if (chatService?.activeChannel) return chatService.activeChannel;
-    } catch (e) {
-      console.warn("Chat service lookup failed:", e);
-    }
-
-    // Try from Ember stores (rare fallback)
+    } catch {}
     try {
       const store = window.Discourse.__container__.lookup("service:chat-store");
       if (store?.activeChannel) return store.activeChannel;
-    } catch (e) {
-      console.warn("Chat store lookup failed:", e);
-    }
-
+    } catch {}
     return null;
   }
 
@@ -38,23 +75,22 @@ export default apiInitializer("1.19.0", (api) => {
       const detailsBody = details.querySelector(".select-kit-body");
       if (!detailsBody) return;
 
-        const btn = document.createElement("li");
-        btn.className =
-          "select-kit-row dropdown-select-box-row create-zendesk-ticket ember-view";
-        btn.setAttribute("role", "menuitemradio");
-        btn.setAttribute("tabindex", "0");
-        btn.innerHTML = `
-          <div class="icons">
-            <span class="selection-indicator"></span>
-            <svg class="fa d-icon d-icon-life-ring svg-icon svg-string" aria-hidden="true">
-              <use href="#life-ring"></use>
-            </svg>
-          </div>
-          <div class="texts">
-            <span class="name">Create Zendesk Ticket</span>
-          </div>
-        `;
-
+      const btn = document.createElement("li");
+      btn.className =
+        "select-kit-row dropdown-select-box-row create-zendesk-ticket ember-view";
+      btn.setAttribute("role", "menuitemradio");
+      btn.setAttribute("tabindex", "0");
+      btn.innerHTML = `
+        <div class="icons">
+          <span class="selection-indicator"></span>
+          <svg class="fa d-icon d-icon-life-ring svg-icon" aria-hidden="true">
+            <use xlink:href="#life-ring"></use>
+          </svg>
+        </div>
+        <div class="texts">
+          <span class="name">Create Zendesk Ticket</span>
+        </div>
+      `;
 
       btn.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -68,24 +104,23 @@ export default apiInitializer("1.19.0", (api) => {
 
         const chatChannel = getCurrentChatChannel();
         if (!chatChannel?.id) {
-          console.error("No chat channel context found.");
           alert("Cannot create Zendesk ticket: missing chat channel context.");
           return;
         }
 
         const channelId = chatChannel.id;
         const channelName = chatChannel.title || chatChannel.name || `Channel #${channelId}`;
-
         const subject = `[Chat] ${channelName} — message from ${messageAuthor}`;
         const description = `Message by ${messageAuthor} in channel "${channelName}" (ID: ${channelId})\n\n${messageText}\n\nView message: ${chatUrl}`;
 
-        console.log("Creating Zendesk ticket from chat:", {
-          channelId,
-          channelName,
-          messageId,
-          subject,
-          description,
-        });
+        console.log("Creating Zendesk ticket from chat:", { channelId, channelName, messageId, subject });
+
+        // Ensure a valid topic for Zendesk ticket
+        const topicId = await ensureTopicForChannel(channelId, channelName);
+        if (!topicId) {
+          alert("Failed to create or find topic for chat channel.");
+          return;
+        }
 
         try {
           const res = await fetch("/zendesk-plugin/issues.json", {
@@ -98,7 +133,7 @@ export default apiInitializer("1.19.0", (api) => {
               Accept: "application/json",
             },
             body: new URLSearchParams({
-              topic_id: channelId, // using channel ID as reference
+              topic_id: topicId,
               subject,
               description,
             }),
@@ -124,7 +159,6 @@ export default apiInitializer("1.19.0", (api) => {
             icon: "check",
           });
 
-          // Optional: open Zendesk ticket in new tab if URL returned
           if (data.zendesk_url) {
             window.open(data.zendesk_url, "_blank");
           }
