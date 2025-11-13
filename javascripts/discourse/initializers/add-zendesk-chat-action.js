@@ -2,7 +2,7 @@ import { apiInitializer } from "discourse/lib/api";
 import { registerIcon } from "discourse-common/lib/icon-library";
 import User from "discourse/models/user";
 
-// Ensure icon exists
+// Register icon
 registerIcon("life-ring");
 
 export default apiInitializer("1.19.0", (api) => {
@@ -10,18 +10,25 @@ export default apiInitializer("1.19.0", (api) => {
   if (!currentUser || !currentUser.staff) return;
 
   async function ensureTopicForChannel(channelId, channelName) {
-    // Step 1: Try to find a topic with the same title
     const topicTitle = `[Chat] ${channelName}`;
+    const internalCategoryId = 242;  // staff-only category ID
+
+    // Search for existing topic
     try {
-      const search = await fetch(`/search/query.json?q=${encodeURIComponent(topicTitle)}`);
-      const results = await search.json();
-      const existing = results?.topics?.find((t) => t.title === topicTitle);
-      if (existing) return existing.id;
+      const searchRes = await fetch(
+        `/search/query.json?q=${encodeURIComponent(topicTitle)}&category=${internalCategoryId}`
+      );
+      const searchData = await searchRes.json();
+      const existing = searchData?.topics?.find((t) => t.title === topicTitle);
+      if (existing) {
+        console.log("Reusing existing internal topic:", existing.id);
+        return existing.id;
+      }
     } catch (e) {
       console.warn("Topic lookup failed:", e);
     }
 
-    // Step 2: Create a new hidden topic as container
+    // Create new hidden topic
     try {
       const res = await fetch("/posts.json", {
         method: "POST",
@@ -33,36 +40,37 @@ export default apiInitializer("1.19.0", (api) => {
         },
         body: new URLSearchParams({
           title: topicTitle,
-          raw: `Internal ticket container for chat channel "${channelName}" (ID ${channelId})`,
+          raw: `Internal ticket container for chat channel **${channelName}** (ID ${channelId})`,
           archetype: "regular",
-          category: 242, // You can change to internal/private category ID
+          category: internalCategoryId,
           visible: false,
         }),
       });
-
       const data = await res.json();
       if (data?.topic_id) {
-        console.log("Created internal topic for chat channel:", data.topic_id);
+        console.log("Created new internal topic for chat channel:", data.topic_id);
         return data.topic_id;
       }
     } catch (e) {
       console.error("Failed to create internal topic:", e);
     }
-
     return null;
   }
 
   function getCurrentChatChannel() {
     const fromChat = window.Discourse?.Chat?.currentChannel;
     if (fromChat?.id) return fromChat;
+
     try {
       const chatService = window.Discourse.__container__.lookup("service:chat");
       if (chatService?.activeChannel) return chatService.activeChannel;
     } catch {}
+
     try {
       const store = window.Discourse.__container__.lookup("service:chat-store");
       if (store?.activeChannel) return store.activeChannel;
     } catch {}
+
     return null;
   }
 
@@ -76,8 +84,7 @@ export default apiInitializer("1.19.0", (api) => {
       if (!detailsBody) return;
 
       const btn = document.createElement("li");
-      btn.className =
-        "select-kit-row dropdown-select-box-row create-zendesk-ticket ember-view";
+      btn.className = "select-kit-row dropdown-select-box-row create-zendesk-ticket ember-view";
       btn.setAttribute("role", "menuitemradio");
       btn.setAttribute("tabindex", "0");
       btn.innerHTML = `
@@ -115,7 +122,6 @@ export default apiInitializer("1.19.0", (api) => {
 
         console.log("Creating Zendesk ticket from chat:", { channelId, channelName, messageId, subject });
 
-        // Ensure a valid topic for Zendesk ticket
         const topicId = await ensureTopicForChannel(channelId, channelName);
         if (!topicId) {
           alert("Failed to create or find topic for chat channel.");
