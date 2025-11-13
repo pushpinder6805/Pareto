@@ -1,3 +1,20 @@
+#dynamic-category-sections .sidebar-section-link,
+#dynamic-category-sections .sidebar-section-link-content-text {
+  color: var(--primary-high) !important;
+  fill: var(--primary-high) !important;
+}
+
+#dynamic-category-sections .sidebar-section-link:hover .sidebar-section-link-content-text,
+#dynamic-category-sections .sidebar-section-link:hover svg {
+  color: var(--tertiary-hover) !important;
+  fill: var(--tertiary-hover) !important;
+}
+
+#dynamic-category-sections .sidebar-chat-channel svg {
+  color: var(--primary-high) !important;
+  fill: var(--primary-high) !important;
+  opacity: 0.9;
+}
 #dynamic-category-sections .sidebar-section-wrapper .sidebar-section-header-text {
   font-size: var(--font-down-2-rem);
   color: var(--d-sidebar-header-color) !important;
@@ -5,18 +22,10 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-
-
 #dynamic-category-sections,
-#dynamic-category-sections a,
-#dynamic-category-sections span,
-#dynamic-category-sections svg {
+#dynamic-category-sections a {
   color: #000 !important;
   fill: #000 !important;
-}
-#dynamic-category-sections a:hover {
-  color: #000 !important;
-  text-decoration: underline;
 }
 #dynamic-category-sections .toggle-button {
   background: none;
