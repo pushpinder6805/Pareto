@@ -66,10 +66,10 @@ export default apiInitializer("1.19.0", (api) => {
       const btn = document.createElement("button");
       btn.className = "chat-message-action create-zendesk-ticket";
       btn.type = "button";
-      btn.innerHTML = `
-        <svg class="fa d-icon d-icon-ticket-alt svg-icon"><use href="#ticket-alt"></use></svg>
-        <span class="label">Create Zendesk Ticket</span>
-      `;
+        btn.innerHTML = `
+          <svg class="fa d-icon d-icon-life-ring svg-icon"><use href="#life-ring"></use></svg>
+          <span class="label">Create Zendesk Ticket</span>
+        `;
 
       btn.addEventListener("click", async (e) => {
         e.preventDefault();
