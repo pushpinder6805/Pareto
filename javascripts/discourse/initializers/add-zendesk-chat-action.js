@@ -38,13 +38,23 @@ export default apiInitializer("1.19.0", (api) => {
       const detailsBody = details.querySelector(".select-kit-body");
       if (!detailsBody) return;
 
-      const btn = document.createElement("button");
-      btn.className = "chat-message-action create-zendesk-ticket";
-      btn.type = "button";
-      btn.innerHTML = `
-        <svg class="fa d-icon d-icon-life-ring svg-icon"><use href="#life-ring"></use></svg>
-        <span class="label">Create Zendesk Ticket</span>
-      `;
+        const btn = document.createElement("li");
+        btn.className =
+          "select-kit-row dropdown-select-box-row create-zendesk-ticket ember-view";
+        btn.setAttribute("role", "menuitemradio");
+        btn.setAttribute("tabindex", "0");
+        btn.innerHTML = `
+          <div class="icons">
+            <span class="selection-indicator"></span>
+            <svg class="fa d-icon d-icon-life-ring svg-icon svg-string" aria-hidden="true">
+              <use href="#life-ring"></use>
+            </svg>
+          </div>
+          <div class="texts">
+            <span class="name">Create Zendesk Ticket</span>
+          </div>
+        `;
+
 
       btn.addEventListener("click", async (e) => {
         e.preventDefault();
