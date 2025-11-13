@@ -54,7 +54,11 @@ export default apiInitializer("1.19.0", (api) => {
         const messageId = container.dataset.id;
         const messageEl = document.querySelector(`[data-id='${messageId}']`);
         const messageText = messageEl?.querySelector(".chat-message-text")?.innerText?.trim() || "(no text)";
-        const messageAuthor = messageEl?.querySelector(".username")?.innerText?.trim() || "Unknown";
+          let messageAuthor =
+            messageEl?.querySelector(".chat-message-user__name")?.innerText?.trim() ||
+            messageEl?.querySelector(".username")?.innerText?.trim() ||
+            messageEl?.querySelector("[data-user-card]")?.getAttribute("data-user-card") ||
+            "Unknown";
         const chatUrl = `${window.location.origin}/chat/message/${messageId}`;
 
         const chatChannel = getCurrentChatChannel();
