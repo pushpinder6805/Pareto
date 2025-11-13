@@ -5,6 +5,30 @@ export default apiInitializer("1.19.0", (api) => {
   const currentUser = User.current();
   if (!currentUser || !currentUser.staff) return;
 
+  function getCurrentChatChannel() {
+    // Try modern API first
+    const fromChat = window.Discourse?.Chat?.currentChannel;
+    if (fromChat?.id) return fromChat;
+
+    // Try via container lookup
+    try {
+      const chatService = window.Discourse.__container__.lookup("service:chat");
+      if (chatService?.activeChannel) return chatService.activeChannel;
+    } catch (e) {
+      console.warn("Chat service lookup failed:", e);
+    }
+
+    // Try from Ember stores (rare fallback)
+    try {
+      const store = window.Discourse.__container__.lookup("service:chat-store");
+      if (store?.activeChannel) return store.activeChannel;
+    } catch (e) {
+      console.warn("Chat store lookup failed:", e);
+    }
+
+    return null;
+  }
+
   function addZendeskButton() {
     document.querySelectorAll(".chat-message-actions-container").forEach((container) => {
       if (container.querySelector(".create-zendesk-ticket")) return;
@@ -32,19 +56,16 @@ export default apiInitializer("1.19.0", (api) => {
         const messageAuthor = messageEl?.querySelector(".username")?.innerText?.trim() || "Unknown";
         const chatUrl = `${window.location.origin}/chat/message/${messageId}`;
 
-        // Pull channel info from Discourse.Chat runtime
-        const chatChannel = window.Discourse?.Chat?.currentChannel;
-        const channelId = chatChannel?.id;
-        const channelName = chatChannel?.title || chatChannel?.name || "Chat Channel";
-
-        // If channel not found, fail gracefully
-        if (!channelId) {
+        const chatChannel = getCurrentChatChannel();
+        if (!chatChannel?.id) {
           console.error("No chat channel context found.");
           alert("Cannot create Zendesk ticket: missing chat channel context.");
           return;
         }
 
-        // Build title + description
+        const channelId = chatChannel.id;
+        const channelName = chatChannel.title || chatChannel.name || `Channel #${channelId}`;
+
         const subject = `[Chat] ${channelName} — message from ${messageAuthor}`;
         const description = `Message by ${messageAuthor} in channel "${channelName}" (ID: ${channelId})\n\n${messageText}\n\nView message: ${chatUrl}`;
 
@@ -67,9 +88,7 @@ export default apiInitializer("1.19.0", (api) => {
               Accept: "application/json",
             },
             body: new URLSearchParams({
-              // Pass a unique pseudo-topic reference for backend
-              // (some Zendesk plugin setups require topic_id — we emulate one)
-              topic_id: channelId,
+              topic_id: channelId, // using channel ID as reference
               subject,
               description,
             }),
@@ -94,6 +113,11 @@ export default apiInitializer("1.19.0", (api) => {
             title: "Success",
             icon: "check",
           });
+
+          // Optional: open Zendesk ticket in new tab if URL returned
+          if (data.zendesk_url) {
+            window.open(data.zendesk_url, "_blank");
+          }
         } catch (err) {
           console.error("Zendesk ticket creation failed:", err);
           api.showToast?.("Failed to create Zendesk ticket.", {
