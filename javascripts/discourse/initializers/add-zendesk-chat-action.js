@@ -22,42 +22,56 @@ export default apiInitializer("1.19.0", () => {
         <span class="label">Create Zendesk Ticket</span>
       `;
 
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", async (e) => {
         e.preventDefault();
         e.stopPropagation();
 
         const messageId = container.dataset.id;
         const messageText =
-          document.querySelector(`[data-id='${messageId}'] .chat-message-text`)?.innerText || "";
+          document.querySelector(`[data-id='${messageId}'] .chat-message-text`)
+            ?.innerText || "";
 
-        // Extract topic_id if possible
+        // Extract topic_id if linked to category/channel, fallback to 2495
         const topicId =
-          window.Discourse?.Chat?.currentChannel?.chatable?.id || 2495; // fallback topic ID
+          window.Discourse?.Chat?.currentChannel?.chatable?.id || 2495;
 
-        fetch("/zendesk-plugin/issues", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "X-CSRF-Token": document
-              .querySelector("meta[name='csrf-token']")
-              ?.getAttribute("content"),
-          },
-          body: new URLSearchParams({
-            topic_id: topicId,
-          }),
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error(`Zendesk API responded ${res.status}`);
-            return res.json();
-          })
-          .then((data) => {
-            console.log("Zendesk ticket created:", data);
-            alert("Zendesk ticket created successfully!");
-          })
-          .catch((err) => {
-            console.error(err);
-            alert("Failed to create Zendesk ticket.");
+        console.log("Creating Zendesk ticket for topic:", topicId, "message:", messageId);
+
+        try {
+          const res = await fetch("/zendesk-plugin/issues.json", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+              "X-CSRF-Token": document
+                .querySelector("meta[name='csrf-token']")
+                ?.getAttribute("content"),
+              Accept: "application/json",
+            },
+            body: new URLSearchParams({
+              topic_id: topicId,
+            }),
           });
+
+          const text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            console.error("Zendesk returned non-JSON response:", text);
+            throw new Error(`Zendesk returned non-JSON (${res.status})`);
+          }
+
+          if (!res.ok) {
+            console.error("Zendesk error:", data);
+            throw new Error(`Zendesk API responded ${res.status}`);
+          }
+
+          console.log("Zendesk ticket created successfully:", data);
+          alert("Zendesk ticket created successfully!");
+        } catch (err) {
+          console.error("Zendesk ticket creation failed:", err);
+          alert("Failed to create Zendesk ticket. Check console for details.");
+        }
       });
 
       detailsBody.appendChild(btn);
