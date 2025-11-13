@@ -1,7 +1,7 @@
 import { apiInitializer } from "discourse/lib/api";
 import User from "discourse/models/user";
 
-export default apiInitializer("1.19.0", () => {
+export default apiInitializer("1.19.0", (api) => {
   const currentUser = User.current();
   if (!currentUser || !currentUser.staff) return;
 
@@ -27,15 +27,34 @@ export default apiInitializer("1.19.0", () => {
         e.stopPropagation();
 
         const messageId = container.dataset.id;
-        const messageText =
-          document.querySelector(`[data-id='${messageId}'] .chat-message-text`)
-            ?.innerText || "";
+        const messageEl = document.querySelector(`[data-id='${messageId}']`);
+        const messageText = messageEl?.querySelector(".chat-message-text")?.innerText?.trim() || "(no text)";
+        const messageAuthor = messageEl?.querySelector(".username")?.innerText?.trim() || "Unknown";
+        const chatUrl = `${window.location.origin}/chat/message/${messageId}`;
 
-        // Extract topic_id if linked to category/channel, fallback to 2495
-        const topicId =
-          window.Discourse?.Chat?.currentChannel?.chatable?.id || 2495;
+        // Pull channel info from Discourse.Chat runtime
+        const chatChannel = window.Discourse?.Chat?.currentChannel;
+        const channelId = chatChannel?.id;
+        const channelName = chatChannel?.title || chatChannel?.name || "Chat Channel";
 
-        console.log("Creating Zendesk ticket for topic:", topicId, "message:", messageId);
+        // If channel not found, fail gracefully
+        if (!channelId) {
+          console.error("No chat channel context found.");
+          alert("Cannot create Zendesk ticket: missing chat channel context.");
+          return;
+        }
+
+        // Build title + description
+        const subject = `[Chat] ${channelName} — message from ${messageAuthor}`;
+        const description = `Message by ${messageAuthor} in channel "${channelName}" (ID: ${channelId})\n\n${messageText}\n\nView message: ${chatUrl}`;
+
+        console.log("Creating Zendesk ticket from chat:", {
+          channelId,
+          channelName,
+          messageId,
+          subject,
+          description,
+        });
 
         try {
           const res = await fetch("/zendesk-plugin/issues.json", {
@@ -48,7 +67,11 @@ export default apiInitializer("1.19.0", () => {
               Accept: "application/json",
             },
             body: new URLSearchParams({
-              topic_id: topicId,
+              // Pass a unique pseudo-topic reference for backend
+              // (some Zendesk plugin setups require topic_id — we emulate one)
+              topic_id: channelId,
+              subject,
+              description,
             }),
           });
 
@@ -67,10 +90,16 @@ export default apiInitializer("1.19.0", () => {
           }
 
           console.log("Zendesk ticket created successfully:", data);
-          alert("Zendesk ticket created successfully!");
+          api.showToast?.("Zendesk ticket created successfully.", {
+            title: "Success",
+            icon: "check",
+          });
         } catch (err) {
           console.error("Zendesk ticket creation failed:", err);
-          alert("Failed to create Zendesk ticket. Check console for details.");
+          api.showToast?.("Failed to create Zendesk ticket.", {
+            title: "Error",
+            icon: "times",
+          });
         }
       });
 
