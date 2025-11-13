@@ -5,44 +5,40 @@ export default apiInitializer("1.19.0", () => {
   const currentUser = User.current();
   if (!currentUser || !currentUser.staff) return;
 
-  function injectZendeskAction(container) {
-    // Find all message action menus currently open
-    container.querySelectorAll(".chat-message-actions, .chat-message-actions-menu").forEach((menuWrapper) => {
-      // Find the existing action buttons inside (Discourse Chat adds them dynamically)
-      const existing = menuWrapper.querySelector(".create-zendesk-ticket");
-      if (existing) return; // Already added
+  function addZendeskButton() {
+    // Find all open chat action containers
+    document.querySelectorAll(".chat-message-actions-container").forEach((container) => {
+      // Skip if already added
+      if (container.querySelector(".create-zendesk-ticket")) return;
 
-      // Determine where to append — button group or menu
-      const buttonContainer =
-        menuWrapper.querySelector(".chat-message-actions-buttons") ||
-        menuWrapper.querySelector("ul") ||
-        menuWrapper;
+      // Find the 3-dot dropdown details element
+      const details = container.querySelector(".more-actions-chat");
+      if (!details) return;
 
-      if (!buttonContainer) return;
+      const detailsBody = details.querySelector(".select-kit-body");
+      if (!detailsBody) return; // menu not yet open
 
-      // Create new action element
-      const actionEl = document.createElement("button");
-      actionEl.className = "chat-message-action create-zendesk-ticket";
-      actionEl.type = "button";
-      actionEl.innerHTML = `
+      // Create our menu item wrapper
+      const btn = document.createElement("button");
+      btn.className = "chat-message-action create-zendesk-ticket";
+      btn.type = "button";
+      btn.innerHTML = `
         <svg class="fa d-icon d-icon-life-ring svg-icon"><use href="#life-ring"></use></svg>
         <span class="label">Create Zendesk Ticket</span>
       `;
 
-      actionEl.addEventListener("click", (e) => {
+      btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        const messageEl = menuWrapper.closest(".chat-message");
-        const messageId = messageEl?.dataset?.messageId;
-        const messageText = messageEl?.querySelector(".chat-message-text")?.innerText?.trim() || "";
+        const messageId = container.dataset.id;
+        if (!messageId) return alert("Could not identify message.");
 
-        if (!messageId) {
-          alert("Could not identify message.");
-          return;
-        }
+        const messageText =
+          document.querySelector(`[data-id='${messageId}'] .chat-message-text`)
+            ?.innerText || "";
 
-        const description = `${currentUser.username} selected message #${messageId}:\n\n${messageText}\n\n${window.location.origin}/chat/message/${messageId}`;
+        const description = `${currentUser.username} selected chat message #${messageId}:\n\n${messageText}\n\n${window.location.origin}/chat/message/${messageId}`;
 
         fetch("/zendesk/create_ticket", {
           method: "POST",
@@ -69,23 +65,21 @@ export default apiInitializer("1.19.0", () => {
           });
       });
 
-      // Insert our new button or menu item
-      buttonContainer.appendChild(actionEl);
+      // Append to the dropdown menu body
+      detailsBody.appendChild(btn);
     });
   }
 
-  // Observe chat DOM for any new menus or message actions opening
+  // Observe DOM for dropdowns opening
   const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      mutation.addedNodes.forEach((node) => {
+    for (const m of mutations) {
+      m.addedNodes.forEach((node) => {
         if (!(node instanceof HTMLElement)) return;
         if (
-          node.classList.contains("chat-message-actions") ||
-          node.classList.contains("chat-message-actions-menu") ||
-          node.querySelector(".chat-message-actions") ||
-          node.querySelector(".chat-message-actions-menu")
+          node.classList.contains("chat-message-actions-container") ||
+          node.querySelector(".chat-message-actions-container")
         ) {
-          injectZendeskAction(node);
+          addZendeskButton();
         }
       });
     }
