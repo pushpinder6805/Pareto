@@ -14,6 +14,7 @@ export default apiInitializer("1.19.0", (api) => {
     try {
       const chatService = window.Discourse.__container__.lookup("service:chat");
       if (chatService?.activeChannel) return chatService.activeChannel;
+      if (chatService?.activeChannel) return chatService.activeChannel;
     } catch (e) {
       console.warn("Chat service lookup failed:", e);
     }
@@ -87,11 +88,11 @@ export default apiInitializer("1.19.0", (api) => {
                 ?.getAttribute("content"),
               Accept: "application/json",
             },
-            body: new URLSearchParams({
-              topic_id: channelId, // using channel ID as reference
-              subject,
-              description,
-            }),
+              body: new URLSearchParams({
+                topic_id: 4559, // fixed topic for all Zendesk tickets
+                subject,
+                description: `[Chat Channel: ${channelName} | ID: ${channelId}]\n\n${description}`,
+              }),
           });
 
           const text = await res.text();
