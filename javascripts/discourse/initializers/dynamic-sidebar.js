@@ -41,7 +41,7 @@ export default apiInitializer("1.19.0", (api) => {
 
         const hasSubs = subs.length > 0 || chats.length > 0;
 
-        // Emoji detection (parent)
+        // Emoji detection
         const emojiSrc = parent.emoji
           ? `/images/emoji/twemoji/${parent.emoji}.png?v=14`
           : parent.uploaded_logo?.url
@@ -55,6 +55,11 @@ export default apiInitializer("1.19.0", (api) => {
         html += `
           <div class="sidebar-section sidebar-section-wrapper sidebar-parent-category"
                data-section-name="${parent.slug}">
+        `;
+
+        if (hasSubs) {
+          // Expandable parent → caret icon
+          html += `
             <div class="sidebar-section-header-wrapper sidebar-row">
               <span class="sidebar-section-header-caret toggle-button"
                     data-target="#sidebar-section-content-${parent.slug}"
@@ -67,9 +72,22 @@ export default apiInitializer("1.19.0", (api) => {
                 ${emojiHTML}${parent.name}
               </a>
             </div>
-        `;
+          `;
+        } else {
+          // Non-expandable parent → link icon
+          html += `
+            <div class="sidebar-section-header-wrapper sidebar-row">
+              <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header sidebar-section-header-link sidebar-row">
+                <span class="sidebar-section-header-caret">
+                  <svg class="fa d-icon d-icon-link svg-icon svg-string"><use href="#link"></use></svg>
+                </span>
+                <span class="sidebar-section-header-text">${emojiHTML}${parent.name}</span>
+              </a>
+            </div>
+          `;
+        }
 
-        // Subcategories or chat links
+        // Default collapsed content
         html += `
           <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" style="display:none;">
         `;
@@ -116,6 +134,7 @@ export default apiInitializer("1.19.0", (api) => {
       html += "</div>";
       return html;
     }
+
 
 
 
