@@ -41,7 +41,7 @@ export default apiInitializer("1.19.0", (api) => {
 
         const hasSubs = subs.length > 0 || chats.length > 0;
 
-        // Emoji check (from category.emoji or uploaded_logo)
+        // Emoji detection (for parent)
         const emojiSrc = parent.emoji
           ? `/images/emoji/twemoji/${parent.emoji}.png?v=14`
           : parent.uploaded_logo?.url
@@ -58,6 +58,7 @@ export default apiInitializer("1.19.0", (api) => {
         `;
 
         if (hasSubs) {
+          // Parent header with old caret icon + emoji
           html += `
             <div class="sidebar-section-header-wrapper sidebar-row">
               <span class="sidebar-section-header-caret toggle-button"
@@ -65,7 +66,7 @@ export default apiInitializer("1.19.0", (api) => {
                     aria-controls="sidebar-section-content-${parent.slug}"
                     aria-expanded="false"
                     title="Toggle section">
-                <svg class="fa d-icon d-icon-arrow-right svg-icon svg-string"><use href="#arrow-right"></use></svg>
+                <svg class="fa d-icon d-icon-angle-down svg-icon svg-string"><use href="#angle-down"></use></svg>
               </span>
               <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header-text sidebar-section-header-link">
                 ${emojiHTML}${parent.name}
@@ -73,6 +74,7 @@ export default apiInitializer("1.19.0", (api) => {
             </div>
           `;
         } else {
+          // Parent with no subs — simple link with emoji
           html += `
             <div class="sidebar-section-header-wrapper sidebar-row">
               <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header sidebar-section-header-link sidebar-row">
@@ -85,11 +87,13 @@ export default apiInitializer("1.19.0", (api) => {
           `;
         }
 
+        // Default collapsed content list
         html += `
           <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" style="display:none;">
         `;
 
         subs.forEach((sub) => {
+          // Emoji detection for subcategories
           const subEmojiSrc = sub.emoji
             ? `/images/emoji/twemoji/${sub.emoji}.png?v=14`
             : sub.uploaded_logo?.url
@@ -100,6 +104,7 @@ export default apiInitializer("1.19.0", (api) => {
             ? `<img src="${subEmojiSrc}" alt="" width="16" height="16" class="emoji" style="margin-right:5px;vertical-align:middle;">`
             : "";
 
+          // Subcategory with arrow-right icon
           html += `
             <li class="sidebar-section-link-wrapper sidebar-subcategory" data-category-id="${sub.id}">
               <a href="/c/${sub.slug}/${sub.id}" class="sidebar-section-link sidebar-row">
@@ -111,6 +116,7 @@ export default apiInitializer("1.19.0", (api) => {
             </li>`;
         });
 
+        // Chat channels under this parent
         chats.forEach((chat) => {
           const slug = chat.chatable?.slug || parent.slug;
           const chatUrl = `/chat/c/${slug}/${chat.id}`;
@@ -131,6 +137,7 @@ export default apiInitializer("1.19.0", (api) => {
       html += "</div>";
       return html;
     }
+
 
 
 
