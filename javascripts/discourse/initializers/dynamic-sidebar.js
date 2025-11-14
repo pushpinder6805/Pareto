@@ -28,6 +28,7 @@ export default apiInitializer("1.19.0", (api) => {
         .sort((a, b) => (a.position || 0) - (b.position || 0));
 
       let html = '<div id="dynamic-category-sections">';
+
       top.forEach((parent) => {
         const subs = cats
           .filter((s) => s.parent_category_id === parent.id)
@@ -40,9 +41,15 @@ export default apiInitializer("1.19.0", (api) => {
 
         const hasSubs = subs.length > 0 || chats.length > 0;
 
-        // Build emoji if exists
-        const emojiHTML = parent.uploaded_logo?.url
-          ? `<img src="${parent.uploaded_logo.url}" alt="" width="20" height="20" class="emoji" style="margin-right:6px;vertical-align:middle;">`
+        // Emoji check (from category.emoji or uploaded_logo)
+        const emojiSrc = parent.emoji
+          ? `/images/emoji/twemoji/${parent.emoji}.png?v=14`
+          : parent.uploaded_logo?.url
+          ? parent.uploaded_logo.url
+          : null;
+
+        const emojiHTML = emojiSrc
+          ? `<img src="${emojiSrc}" alt="" width="20" height="20" class="emoji" style="margin-right:6px;vertical-align:middle;">`
           : "";
 
         html += `
@@ -58,7 +65,7 @@ export default apiInitializer("1.19.0", (api) => {
                     aria-controls="sidebar-section-content-${parent.slug}"
                     aria-expanded="false"
                     title="Toggle section">
-                <svg class="fa d-icon d-icon-angle-right svg-icon svg-string"><use href="#angle-right"></use></svg>
+                <svg class="fa d-icon d-icon-arrow-right svg-icon svg-string"><use href="#arrow-right"></use></svg>
               </span>
               <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header-text sidebar-section-header-link">
                 ${emojiHTML}${parent.name}
@@ -83,17 +90,23 @@ export default apiInitializer("1.19.0", (api) => {
         `;
 
         subs.forEach((sub) => {
-          const subEmoji = sub.uploaded_logo?.url
-            ? `<img src="${sub.uploaded_logo.url}" alt="" width="16" height="16" class="emoji" style="margin-right:5px;vertical-align:middle;">`
+          const subEmojiSrc = sub.emoji
+            ? `/images/emoji/twemoji/${sub.emoji}.png?v=14`
+            : sub.uploaded_logo?.url
+            ? sub.uploaded_logo.url
+            : null;
+
+          const subEmojiHTML = subEmojiSrc
+            ? `<img src="${subEmojiSrc}" alt="" width="16" height="16" class="emoji" style="margin-right:5px;vertical-align:middle;">`
             : "";
 
           html += `
             <li class="sidebar-section-link-wrapper sidebar-subcategory" data-category-id="${sub.id}">
               <a href="/c/${sub.slug}/${sub.id}" class="sidebar-section-link sidebar-row">
                 <span class="sidebar-section-link-prefix icon">
-                  <svg class="fa d-icon d-icon-angle-right svg-icon prefix-icon"><use href="#angle-right"></use></svg>
+                  <svg class="fa d-icon d-icon-arrow-right svg-icon prefix-icon"><use href="#arrow-right"></use></svg>
                 </span>
-                <span class="sidebar-section-link-content-text">${subEmoji}${sub.name}</span>
+                <span class="sidebar-section-link-content-text">${subEmojiHTML}${sub.name}</span>
               </a>
             </li>`;
         });
@@ -118,6 +131,7 @@ export default apiInitializer("1.19.0", (api) => {
       html += "</div>";
       return html;
     }
+
 
 
   async function insertSections() {
