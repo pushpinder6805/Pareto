@@ -17,101 +17,108 @@ export default apiInitializer("1.19.0", (api) => {
     }
   }
 
-  async function buildSections() {
-    const cats = site?.categories || [];
-    if (!cats.length) return "";
+    async function buildSections() {
+      const cats = site?.categories || [];
+      if (!cats.length) return "";
 
-    const chatChannels = await fetchChatChannels();
+      const chatChannels = await fetchChatChannels();
 
-    const top = cats
-      .filter((c) => !c.parent_category_id)
-      .sort((a, b) => (a.position || 0) - (b.position || 0));
-
-    let html = '<div id="dynamic-category-sections">';
-    top.forEach((parent) => {
-      const subs = cats
-        .filter((s) => s.parent_category_id === parent.id)
+      const top = cats
+        .filter((c) => !c.parent_category_id)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-      const chats = (chatChannels || []).filter(
-        (ch) =>
-          ch.chatable_type === "Category" && ch.chatable_id === parent.id
-      );
+      let html = '<div id="dynamic-category-sections">';
+      top.forEach((parent) => {
+        const subs = cats
+          .filter((s) => s.parent_category_id === parent.id)
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-      const hasSubs = subs.length > 0 || chats.length > 0;
+        const chats = (chatChannels || []).filter(
+          (ch) =>
+            ch.chatable_type === "Category" && ch.chatable_id === parent.id
+        );
 
-      html += `
-        <div class="sidebar-section sidebar-section-wrapper sidebar-section--expanded sidebar-parent-category"
-             data-section-name="${parent.slug}">
-      `;
+        const hasSubs = subs.length > 0 || chats.length > 0;
 
-      if (hasSubs) {
+        // Build emoji if exists
+        const emojiHTML = parent.uploaded_logo?.url
+          ? `<img src="${parent.uploaded_logo.url}" alt="" width="20" height="20" class="emoji" style="margin-right:6px;vertical-align:middle;">`
+          : "";
+
         html += `
-          <div class="sidebar-section-header-wrapper sidebar-row">
-            <span class="sidebar-section-header-caret toggle-button"
-                  data-target="#sidebar-section-content-${parent.slug}"
-                  aria-controls="sidebar-section-content-${parent.slug}"
-                  aria-expanded="true"
-                  title="Toggle section">
-              <svg class="fa d-icon d-icon-angle-down svg-icon svg-string"><use href="#angle-down"></use></svg>
-            </span>
-            <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header-text sidebar-section-header-link">
-              ${parent.name}
-            </a>
-          </div>
+          <div class="sidebar-section sidebar-section-wrapper sidebar-parent-category"
+               data-section-name="${parent.slug}">
         `;
-      } else {
-        html += `
-          <div class="sidebar-section-header-wrapper sidebar-row">
-            <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header sidebar-section-header-link sidebar-row">
-              <span class="sidebar-section-header-caret">
-                <svg class="fa d-icon d-icon-link svg-icon svg-string"><use href="#link"></use></svg>
+
+        if (hasSubs) {
+          html += `
+            <div class="sidebar-section-header-wrapper sidebar-row">
+              <span class="sidebar-section-header-caret toggle-button"
+                    data-target="#sidebar-section-content-${parent.slug}"
+                    aria-controls="sidebar-section-content-${parent.slug}"
+                    aria-expanded="false"
+                    title="Toggle section">
+                <svg class="fa d-icon d-icon-angle-right svg-icon svg-string"><use href="#angle-right"></use></svg>
               </span>
-              <span class="sidebar-section-header-text">${parent.name}</span>
-            </a>
-          </div>
+              <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header-text sidebar-section-header-link">
+                ${emojiHTML}${parent.name}
+              </a>
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="sidebar-section-header-wrapper sidebar-row">
+              <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header sidebar-section-header-link sidebar-row">
+                <span class="sidebar-section-header-caret">
+                  <svg class="fa d-icon d-icon-link svg-icon svg-string"><use href="#link"></use></svg>
+                </span>
+                <span class="sidebar-section-header-text">${emojiHTML}${parent.name}</span>
+              </a>
+            </div>
+          `;
+        }
+
+        html += `
+          <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" style="display:none;">
         `;
-      }
 
-      html += `
-        <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" ${
-          hasSubs ? "" : 'style="display:none;"'
-        }>
-      `;
+        subs.forEach((sub) => {
+          const subEmoji = sub.uploaded_logo?.url
+            ? `<img src="${sub.uploaded_logo.url}" alt="" width="16" height="16" class="emoji" style="margin-right:5px;vertical-align:middle;">`
+            : "";
 
-      subs.forEach((sub) => {
-        html += `
-          <li class="sidebar-section-link-wrapper sidebar-subcategory" data-category-id="${sub.id}">
-            <a href="/c/${sub.slug}/${sub.id}" class="sidebar-section-link sidebar-row">
-              <span class="sidebar-section-link-prefix icon">
-                <svg class="fa d-icon d-icon-angle-right svg-icon prefix-icon"><use href="#angle-right"></use></svg>
-              </span>
-              <span class="sidebar-section-link-content-text">${sub.name}</span>
-            </a>
-          </li>`;
+          html += `
+            <li class="sidebar-section-link-wrapper sidebar-subcategory" data-category-id="${sub.id}">
+              <a href="/c/${sub.slug}/${sub.id}" class="sidebar-section-link sidebar-row">
+                <span class="sidebar-section-link-prefix icon">
+                  <svg class="fa d-icon d-icon-angle-right svg-icon prefix-icon"><use href="#angle-right"></use></svg>
+                </span>
+                <span class="sidebar-section-link-content-text">${subEmoji}${sub.name}</span>
+              </a>
+            </li>`;
+        });
+
+        chats.forEach((chat) => {
+          const slug = chat.chatable?.slug || parent.slug;
+          const chatUrl = `/chat/c/${slug}/${chat.id}`;
+          html += `
+            <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
+              <a href="${chatUrl}" class="sidebar-section-link sidebar-row">
+                <span class="sidebar-section-link-prefix icon">
+                  <svg class="fa d-icon d-icon-comments svg-icon prefix-icon"><use href="#comments"></use></svg>
+                </span>
+                <span class="sidebar-section-link-content-text">${chat.title || "Chat"}</span>
+              </a>
+            </li>`;
+        });
+
+        html += `</ul></div>`;
       });
 
-      chats.forEach((chat) => {
-        const slug = chat.chatable?.slug || parent.slug;
-        const chatUrl = `/chat/c/${slug}/${chat.id}`;
+      html += "</div>";
+      return html;
+    }
 
-        html += `
-          <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
-            <a href="${chatUrl}" class="sidebar-section-link sidebar-row">
-              <span class="sidebar-section-link-prefix icon">
-                <svg class="fa d-icon d-icon-comments svg-icon prefix-icon"><use href="#comments"></use></svg>
-              </span>
-              <span class="sidebar-section-link-content-text">${chat.title || "Chat"}</span>
-            </a>
-          </li>`;
-      });
-
-      html += `</ul></div>`;
-    });
-
-    html += "</div>";
-    return html;
-  }
 
   async function insertSections() {
     // Detect mobile mode
