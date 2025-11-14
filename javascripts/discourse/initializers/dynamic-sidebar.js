@@ -114,14 +114,16 @@ export default apiInitializer("1.19.0", (api) => {
   }
 
   async function insertSections() {
-    // Detect if current view is mobile
-    const isMobile = site?.mobileView;
+    // Detect mobile mode
+    const isMobile = !!site?.mobileView;
 
-    // Pick container based on device type
+    // Desktop primary containers
     let sidebar = document.querySelector(".sidebar, .sidebar-container");
 
+    // For mobile, prefer the explicit class you provided; fall back to drawer selectors
     if (isMobile) {
       sidebar =
+        document.querySelector(".sidebar-hamburger-dropdown") ||
         document.querySelector(".drawer-content .mobile-nav") ||
         document.querySelector(".drawer-content");
     }
@@ -131,11 +133,10 @@ export default apiInitializer("1.19.0", (api) => {
     const html = await buildSections();
     if (!html) return;
 
-    // Remove old section if re-rendering
     const old = document.getElementById("dynamic-category-sections");
     if (old) old.remove();
 
-    // Insert inside proper wrapper
+    // Prefer inserting into a .sidebar-sections wrapper if present, otherwise append to container
     const container =
       sidebar.querySelector(".sidebar-sections") || sidebar;
     const firstSection = container.querySelector(".sidebar-section");
@@ -155,32 +156,38 @@ export default apiInitializer("1.19.0", (api) => {
     );
 
     toggles.forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+      // remove previous listeners by cloning node to ensure mobile toggle rebinds cleanly
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+
+      newBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
 
-        const section = btn.closest(".sidebar-section");
+        const section = newBtn.closest(".sidebar-section");
         const target = section.querySelector(".sidebar-section-content");
-        const isExpanded = btn.getAttribute("aria-expanded") === "true";
+        const isExpanded = newBtn.getAttribute("aria-expanded") === "true";
 
         if (isExpanded) {
           target.style.display = "none";
-          btn.setAttribute("aria-expanded", "false");
+          newBtn.setAttribute("aria-expanded", "false");
           section.classList.remove("sidebar-section--expanded");
         } else {
           target.style.display = "";
-          btn.setAttribute("aria-expanded", "true");
+          newBtn.setAttribute("aria-expanded", "true");
           section.classList.add("sidebar-section--expanded");
         }
-      });
+      }, { passive: false });
     });
   }
 
   const waitUntilReady = async () => {
     const sidebar =
       document.querySelector(".sidebar, .sidebar-container") ||
+      document.querySelector(".sidebar-hamburger-dropdown") ||
       document.querySelector(".drawer-content .mobile-nav") ||
       document.querySelector(".drawer-content");
+
     if (!sidebar || !(site?.categories?.length)) {
       setTimeout(waitUntilReady, 800);
       return;
