@@ -11,7 +11,7 @@ export default apiInitializer("1.19.0", (api) => {
       const response = await fetch("/chat/api/channels.json");
       if (!response.ok) return [];
       const data = await response.json();
-      return data.channels || []; // ← fixed: was public_channels
+      return data.channels || [];
     } catch (e) {
       return [];
     }
@@ -91,22 +91,20 @@ export default apiInitializer("1.19.0", (api) => {
           </li>`;
       });
 
-        chats.forEach((chat) => {
-          const slug = chat.chatable?.slug || parent.slug;
-          const chatUrl = `/chat/c/${slug}/${chat.id}`;
+      chats.forEach((chat) => {
+        const slug = chat.chatable?.slug || parent.slug;
+        const chatUrl = `/chat/c/${slug}/${chat.id}`;
 
-          html += `
-            <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
-              <a href="${chatUrl}" class="sidebar-section-link sidebar-row">
-                <span class="sidebar-section-link-prefix icon">
-                  <svg class="fa d-icon d-icon-comments svg-icon prefix-icon"><use href="#comments"></use></svg>
-                </span>
-                <span class="sidebar-section-link-content-text">${chat.title || "Chat"}</span>
-              </a>
-            </li>`;
-        });
-
-
+        html += `
+          <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
+            <a href="${chatUrl}" class="sidebar-section-link sidebar-row">
+              <span class="sidebar-section-link-prefix icon">
+                <svg class="fa d-icon d-icon-comments svg-icon prefix-icon"><use href="#comments"></use></svg>
+              </span>
+              <span class="sidebar-section-link-content-text">${chat.title || "Chat"}</span>
+            </a>
+          </li>`;
+      });
 
       html += `</ul></div>`;
     });
@@ -116,15 +114,28 @@ export default apiInitializer("1.19.0", (api) => {
   }
 
   async function insertSections() {
-    const sidebar = document.querySelector(".sidebar, .sidebar-container");
+    // Detect if current view is mobile
+    const isMobile = site?.mobileView;
+
+    // Pick container based on device type
+    let sidebar = document.querySelector(".sidebar, .sidebar-container");
+
+    if (isMobile) {
+      sidebar =
+        document.querySelector(".drawer-content .mobile-nav") ||
+        document.querySelector(".drawer-content");
+    }
+
     if (!sidebar) return;
 
     const html = await buildSections();
     if (!html) return;
 
+    // Remove old section if re-rendering
     const old = document.getElementById("dynamic-category-sections");
     if (old) old.remove();
 
+    // Insert inside proper wrapper
     const container =
       sidebar.querySelector(".sidebar-sections") || sidebar;
     const firstSection = container.querySelector(".sidebar-section");
@@ -166,7 +177,10 @@ export default apiInitializer("1.19.0", (api) => {
   }
 
   const waitUntilReady = async () => {
-    const sidebar = document.querySelector(".sidebar, .sidebar-container");
+    const sidebar =
+      document.querySelector(".sidebar, .sidebar-container") ||
+      document.querySelector(".drawer-content .mobile-nav") ||
+      document.querySelector(".drawer-content");
     if (!sidebar || !(site?.categories?.length)) {
       setTimeout(waitUntilReady, 800);
       return;
