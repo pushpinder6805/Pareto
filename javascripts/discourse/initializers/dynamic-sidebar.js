@@ -254,33 +254,28 @@ export default apiInitializer("1.19.0", (api) => {
   /* -----------------------------
       MOBILE SIDEBAR OBSERVER (your real structure)
   ------------------------------*/
-  function observeMobileHamburger() {
-    const container = document.querySelector(".revamped.menu-panel.slide-in .panel-body-contents");
-
-    if (!container) {
-      setTimeout(observeMobileHamburger, 300);
-      return;
-    }
-
-    const observer = new MutationObserver((mutations) => {
-      for (let m of mutations) {
-        if (
-          [...m.addedNodes].some(
+    function observeMobileSidebar() {
+      const observer = new MutationObserver((mutations) => {
+        for (let m of mutations) {
+          // Detect when the mobile sidebar panel appears or is rebuilt
+          if ([...m.addedNodes].some(
             (n) =>
+              n.nodeType === 1 &&
               n.classList &&
-              n.classList.contains("sidebar-hamburger-dropdown")
-          )
-        ) {
-          insertSections();
+              n.classList.contains("revamped") &&
+              n.classList.contains("menu-panel") &&
+              n.classList.contains("slide-in")
+          )) {
+            insertSections();
+          }
         }
-      }
-    });
+      });
 
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-    });
-  }
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    }
 
   /* -----------------------------
              START OBSERVERS
