@@ -215,22 +215,32 @@ export default apiInitializer("1.19.0", (api) => {
     }
     await insertSections();
   };
+    // Re-insert sections automatically whenever sidebar is rebuilt
+    function observeSidebar() {
+      const targets = [
+        ".sidebar-container",
+        ".sidebar-hamburger-dropdown",
+        ".drawer-content"
+      ];
+
+      targets.forEach((selector) => {
+        const el = document.querySelector(selector);
+        if (!el) return;
+
+        const observer = new MutationObserver(() => {
+          insertSections();
+        });
+
+        observer.observe(el, {
+          childList: true,
+          subtree: true
+        });
+      });
+    }
+
     api.onPageChange(() => insertSections());
+    observeSidebar();
 
-    // DESKTOP SIDEBAR
-    api.observe(".sidebar-container .sidebar-sections", () => {
-      insertSections();
-    });
-
-    // MOBILE HAMBURGER DROPDOWN
-    api.observe(".sidebar-hamburger-dropdown .sidebar-sections", () => {
-      insertSections();
-    });
-
-    // MOBILE DRAWER SIDEBAR
-    api.observe(".drawer-content .sidebar-sections", () => {
-      insertSections();
-    });
 
   waitUntilReady();
 });
