@@ -215,11 +215,20 @@ export default apiInitializer("1.19.0", (api) => {
     }
     await insertSections();
   };
-    api.onPageChange(() => {
+    api.onPageChange(() => insertSections());
+
+    // DESKTOP SIDEBAR
+    api.observe(".sidebar-container .sidebar-sections", () => {
       insertSections();
     });
 
-    api.observe(".sidebar, .sidebar-hamburger-dropdown, .drawer-content", () => {
+    // MOBILE HAMBURGER DROPDOWN
+    api.observe(".sidebar-hamburger-dropdown .sidebar-sections", () => {
+      insertSections();
+    });
+
+    // MOBILE DRAWER SIDEBAR
+    api.observe(".drawer-content .sidebar-sections", () => {
       insertSections();
     });
 
