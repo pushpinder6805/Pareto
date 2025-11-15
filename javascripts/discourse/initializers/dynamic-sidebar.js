@@ -215,12 +215,34 @@ export default apiInitializer("1.19.0", (api) => {
     }
     await insertSections();
   };
-    api.onPageChange(() => insertSections());
+    function observeSidebarRebuild() {
+      const sidebarRoot = document.getElementById("d-sidebar");
 
-    // Fires whenever Discourse rebuilds the sidebar (toggle, mobile, navigation)
-    api.onAppEvent("sidebar:rerender", () => {
-      insertSections();
-    });
+      if (!sidebarRoot || !sidebarRoot.parentNode) {
+        // Retry until sidebar is actually in DOM
+        setTimeout(observeSidebarRebuild, 300);
+        return;
+      }
+
+      const parent = sidebarRoot.parentNode;
+
+      const observer = new MutationObserver((mutations) => {
+        for (let m of mutations) {
+          // Detect when Discourse replaces the sidebar DOM
+          if ([...m.addedNodes].some(n => n.id === "d-sidebar")) {
+            insertSections();
+          }
+        }
+      });
+
+      observer.observe(parent, {
+        childList: true
+      });
+    }
+
+    api.onPageChange(() => insertSections());
+    observeSidebarRebuild();
+
 
   waitUntilReady();
 });
