@@ -215,32 +215,11 @@ export default apiInitializer("1.19.0", (api) => {
     }
     await insertSections();
   };
-    // Re-insert sections automatically whenever sidebar is rebuilt
-    function observeSidebar() {
-      const targets = [
-        ".sidebar-container",
-        ".sidebar-hamburger-dropdown",
-        ".drawer-content"
-      ];
-
-      targets.forEach((selector) => {
-        const el = document.querySelector(selector);
-        if (!el) return;
-
-        const observer = new MutationObserver(() => {
-          insertSections();
-        });
-
-        observer.observe(el, {
-          childList: true,
-          subtree: true
-        });
-      });
-    }
-
     api.onPageChange(() => insertSections());
-    observeSidebar();
 
+    api.onSidebarBuild(() => {
+      insertSections();
+    });
 
   waitUntilReady();
 });
