@@ -217,7 +217,8 @@ export default apiInitializer("1.19.0", (api) => {
   };
     api.onPageChange(() => insertSections());
 
-    api.onSidebarBuild(() => {
+    // Fires whenever Discourse rebuilds the sidebar (toggle, mobile, navigation)
+    api.onAppEvent("sidebar:rerender", () => {
       insertSections();
     });
 
