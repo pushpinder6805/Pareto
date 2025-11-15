@@ -282,7 +282,7 @@ export default apiInitializer("1.19.0", (api) => {
   ------------------------------*/
   api.onPageChange(() => insertSections());
   observeSidebarRebuild();     // Desktop fix
-  observeMobileHamburger();    // Mobile fix
+  observeMobileSidebar();     // Mobile fix
 
   waitUntilReady();
 });
