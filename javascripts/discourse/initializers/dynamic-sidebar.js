@@ -215,6 +215,13 @@ export default apiInitializer("1.19.0", (api) => {
     }
     await insertSections();
   };
+    api.onPageChange(() => {
+      insertSections();
+    });
+
+    api.observe(".sidebar, .sidebar-hamburger-dropdown, .drawer-content", () => {
+      insertSections();
+    });
 
   waitUntilReady();
 });
