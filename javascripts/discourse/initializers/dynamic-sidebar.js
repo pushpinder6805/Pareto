@@ -149,8 +149,8 @@ export default apiInitializer("1.19.0", (api) => {
     if (isMobile) {
       sidebar =
         document.querySelector(".sidebar-hamburger-dropdown") ||
-        document.querySelector(".drawer-content .mobile-nav") ||
-        document.querySelector(".drawer-content");
+        document.querySelector(".revamped.menu-panel.slide-in .sidebar-hamburger-dropdown") ||
+        document.querySelector(".revamped.menu-panel.slide-in");
     }
 
     if (!sidebar) return;
@@ -212,15 +212,11 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
-  /* -----------------------------
-      WAIT FOR SIDEBAR TO EXIST
-  ------------------------------*/
   const waitUntilReady = async () => {
     const sidebar =
       document.querySelector(".sidebar, .sidebar-container") ||
       document.querySelector(".sidebar-hamburger-dropdown") ||
-      document.querySelector(".drawer-content .mobile-nav") ||
-      document.querySelector(".drawer-content");
+      document.querySelector(".revamped.menu-panel.slide-in");
 
     if (!sidebar || !(site?.categories?.length)) {
       setTimeout(waitUntilReady, 800);
@@ -230,7 +226,7 @@ export default apiInitializer("1.19.0", (api) => {
   };
 
   /* -----------------------------
-      DESKTOP SIDEBAR OBSERVER
+        DESKTOP SIDEBAR OBSERVER
   ------------------------------*/
   function observeSidebarRebuild() {
     const sidebarRoot = document.getElementById("d-sidebar");
@@ -256,13 +252,13 @@ export default apiInitializer("1.19.0", (api) => {
   }
 
   /* -----------------------------
-      MOBILE DRAWER OBSERVER
+      MOBILE SIDEBAR OBSERVER (your real structure)
   ------------------------------*/
-  function observeMobileDrawer() {
-    const mobileView = document.getElementById("mobile-view");
+  function observeMobileHamburger() {
+    const container = document.querySelector(".revamped.menu-panel.slide-in .panel-body-contents");
 
-    if (!mobileView) {
-      setTimeout(observeMobileDrawer, 300);
+    if (!container) {
+      setTimeout(observeMobileHamburger, 300);
       return;
     }
 
@@ -270,7 +266,9 @@ export default apiInitializer("1.19.0", (api) => {
       for (let m of mutations) {
         if (
           [...m.addedNodes].some(
-            (n) => n.classList && n.classList.contains("drawer-content")
+            (n) =>
+              n.classList &&
+              n.classList.contains("sidebar-hamburger-dropdown")
           )
         ) {
           insertSections();
@@ -278,18 +276,18 @@ export default apiInitializer("1.19.0", (api) => {
       }
     });
 
-    observer.observe(mobileView, {
+    observer.observe(container, {
       childList: true,
       subtree: true,
     });
   }
 
   /* -----------------------------
-      START OBSERVERS
+             START OBSERVERS
   ------------------------------*/
   api.onPageChange(() => insertSections());
-  observeSidebarRebuild();
-  observeMobileDrawer();
+  observeSidebarRebuild();     // Desktop fix
+  observeMobileHamburger();    // Mobile fix
 
   waitUntilReady();
 });

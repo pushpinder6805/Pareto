@@ -57,26 +57,25 @@ export default apiInitializer("1.19.0", (api) => {
       `;
 
       if (hasSubs) {
-        // Expandable parent → caret icon (right by default)
         html += `
           <div class="sidebar-section-header-wrapper sidebar-row">
             <span class="sidebar-section-header-caret toggle-button"
                   data-target="#sidebar-section-content-${parent.slug}"
                   aria-controls="sidebar-section-content-${parent.slug}"
-                  aria-expanded="false"
-                  title="Toggle section">
+                  aria-expanded="false">
               <svg class="fa d-icon d-icon-angle-right svg-icon svg-string"><use href="#angle-right"></use></svg>
             </span>
-            <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header-text sidebar-section-header-link">
+            <a href="/c/${parent.slug}/${parent.id}"
+               class="sidebar-section-header-text sidebar-section-header-link">
               ${emojiHTML}${parent.name}
             </a>
           </div>
         `;
       } else {
-        // Non-expandable parent → link icon
         html += `
           <div class="sidebar-section-header-wrapper sidebar-row">
-            <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-header sidebar-section-header-link sidebar-row">
+            <a href="/c/${parent.slug}/${parent.id}"
+               class="sidebar-section-header sidebar-section-header-link sidebar-row">
               <span class="sidebar-section-header-caret">
                 <svg class="fa d-icon d-icon-link svg-icon svg-string"><use href="#link"></use></svg>
               </span>
@@ -87,7 +86,9 @@ export default apiInitializer("1.19.0", (api) => {
       }
 
       html += `
-        <ul id="sidebar-section-content-${parent.slug}" class="sidebar-section-content" style="display:none;">
+        <ul id="sidebar-section-content-${parent.slug}"
+            class="sidebar-section-content"
+            style="display:none;">
       `;
 
       subs.forEach((sub) => {
@@ -102,10 +103,13 @@ export default apiInitializer("1.19.0", (api) => {
           : "";
 
         html += `
-          <li class="sidebar-section-link-wrapper sidebar-subcategory" data-category-id="${sub.id}">
+          <li class="sidebar-section-link-wrapper sidebar-subcategory"
+              data-category-id="${sub.id}">
             <a href="/c/${sub.slug}/${sub.id}" class="sidebar-section-link sidebar-row">
               <span class="sidebar-section-link-prefix icon">
-                <svg class="fa d-icon d-icon-arrow-right svg-icon prefix-icon"><use href="#arrow-right"></use></svg>
+                <svg class="fa d-icon d-icon-arrow-right svg-icon prefix-icon">
+                  <use href="#arrow-right"></use>
+                </svg>
               </span>
               <span class="sidebar-section-link-content-text">${subEmojiHTML}${sub.name}</span>
             </a>
@@ -116,12 +120,17 @@ export default apiInitializer("1.19.0", (api) => {
         const slug = chat.chatable?.slug || parent.slug;
         const chatUrl = `/chat/c/${slug}/${chat.id}`;
         html += `
-          <li class="sidebar-section-link-wrapper sidebar-chat-channel" data-chat-channel-id="${chat.id}">
+          <li class="sidebar-section-link-wrapper sidebar-chat-channel"
+              data-chat-channel-id="${chat.id}">
             <a href="${chatUrl}" class="sidebar-section-link sidebar-row">
               <span class="sidebar-section-link-prefix icon">
-                <svg class="fa d-icon d-icon-comments svg-icon prefix-icon"><use href="#comments"></use></svg>
+                <svg class="fa d-icon d-icon-comments svg-icon prefix-icon">
+                  <use href="#comments"></use>
+                </svg>
               </span>
-              <span class="sidebar-section-link-content-text">${chat.title || "Chat"}</span>
+              <span class="sidebar-section-link-content-text">
+                ${chat.title || "Chat"}
+              </span>
             </a>
           </li>`;
       });
@@ -154,6 +163,7 @@ export default apiInitializer("1.19.0", (api) => {
 
     const container =
       sidebar.querySelector(".sidebar-sections") || sidebar;
+
     const firstSection = container.querySelector(".sidebar-section");
 
     if (firstSection) {
@@ -189,12 +199,12 @@ export default apiInitializer("1.19.0", (api) => {
             target.style.display = "none";
             newBtn.setAttribute("aria-expanded", "false");
             section.classList.remove("sidebar-section--expanded");
-            if (use) use.setAttribute("href", "#angle-right"); // collapsed state icon
+            if (use) use.setAttribute("href", "#angle-right");
           } else {
             target.style.display = "";
             newBtn.setAttribute("aria-expanded", "true");
             section.classList.add("sidebar-section--expanded");
-            if (use) use.setAttribute("href", "#angle-down"); // expanded state icon
+            if (use) use.setAttribute("href", "#angle-down");
           }
         },
         { passive: false }
@@ -202,6 +212,9 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
+  /* -----------------------------
+      WAIT FOR SIDEBAR TO EXIST
+  ------------------------------*/
   const waitUntilReady = async () => {
     const sidebar =
       document.querySelector(".sidebar, .sidebar-container") ||
@@ -215,34 +228,68 @@ export default apiInitializer("1.19.0", (api) => {
     }
     await insertSections();
   };
-    function observeSidebarRebuild() {
-      const sidebarRoot = document.getElementById("d-sidebar");
 
-      if (!sidebarRoot || !sidebarRoot.parentNode) {
-        // Retry until sidebar is actually in DOM
-        setTimeout(observeSidebarRebuild, 300);
-        return;
-      }
+  /* -----------------------------
+      DESKTOP SIDEBAR OBSERVER
+  ------------------------------*/
+  function observeSidebarRebuild() {
+    const sidebarRoot = document.getElementById("d-sidebar");
 
-      const parent = sidebarRoot.parentNode;
-
-      const observer = new MutationObserver((mutations) => {
-        for (let m of mutations) {
-          // Detect when Discourse replaces the sidebar DOM
-          if ([...m.addedNodes].some(n => n.id === "d-sidebar")) {
-            insertSections();
-          }
-        }
-      });
-
-      observer.observe(parent, {
-        childList: true
-      });
+    if (!sidebarRoot || !sidebarRoot.parentNode) {
+      setTimeout(observeSidebarRebuild, 300);
+      return;
     }
 
-    api.onPageChange(() => insertSections());
-    observeSidebarRebuild();
+    const parent = sidebarRoot.parentNode;
 
+    const observer = new MutationObserver((mutations) => {
+      for (let m of mutations) {
+        if ([...m.addedNodes].some((n) => n.id === "d-sidebar")) {
+          insertSections();
+        }
+      }
+    });
+
+    observer.observe(parent, {
+      childList: true,
+    });
+  }
+
+  /* -----------------------------
+      MOBILE DRAWER OBSERVER
+  ------------------------------*/
+  function observeMobileDrawer() {
+    const mobileView = document.getElementById("mobile-view");
+
+    if (!mobileView) {
+      setTimeout(observeMobileDrawer, 300);
+      return;
+    }
+
+    const observer = new MutationObserver((mutations) => {
+      for (let m of mutations) {
+        if (
+          [...m.addedNodes].some(
+            (n) => n.classList && n.classList.contains("drawer-content")
+          )
+        ) {
+          insertSections();
+        }
+      }
+    });
+
+    observer.observe(mobileView, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  /* -----------------------------
+      START OBSERVERS
+  ------------------------------*/
+  api.onPageChange(() => insertSections());
+  observeSidebarRebuild();
+  observeMobileDrawer();
 
   waitUntilReady();
 });
