@@ -1,93 +1,113 @@
 import { apiInitializer } from "discourse/lib/api";
 
-export default apiInitializer("0.14.0", (api) => {
-  const CUSTOM_FIELD = "multi_emoji_reactions";
+// Works with Discourse v3.5+ (Glimmer post stream)
 
-  // Read existing reactions stored in post custom fields
-  function getReactions(post) {
-    const data = post.get("custom_fields." + CUSTOM_FIELD);
-    return data ? JSON.parse(data) : {};
-  }
+export default apiInitializer("1.0.0", (api) => {
+  const FIELD = "multi_emoji_reactions";
 
-  // Save reaction back to server
-  function saveReactions(post, reactions) {
-    const payload = {};
-    payload[CUSTOM_FIELD] = JSON.stringify(reactions);
+  // Make custom field visible to the client
+  api.includePostAttributes([FIELD]);
 
-    return post.save({ custom_fields: payload });
-  }
+  //
+  // 1. RENDER reaction bar under every cooked post
+  //
+  api.renderInOutlet("post-after-cooked", (model) => {
+    const post = model.post;
 
-  // UI: add a small "Add Reaction" button under every post
-  api.decorateWidget("post-bottom-icons:after", (helper) => {
-    const post = helper.widget.model;
-    return helper.h(
-      "button.multi-emoji-react-btn",
-      {
-        title: "Add Emoji Reaction",
-        onclick: () => openEmojiPicker(post),
-      },
-      "😀"
-    );
+    let reactions = {};
+    if (post[FIELD]) {
+      try {
+        reactions = JSON.parse(post[FIELD]);
+      } catch (e) {
+        reactions = {};
+      }
+    }
+
+    let html = `<div class="multi-reaction-bar" data-post-id="${post.id}">`;
+
+    for (const emoji in reactions) {
+      const count = reactions[emoji].length;
+      html += `
+        <span class="reaction-item" data-emoji="${emoji}">
+          ${emoji} ${count}
+        </span>`;
+    }
+
+    html += `
+      <button class="add-reaction-btn" data-post-id="${post.id}">
+        😀
+      </button>
+    </div>`;
+
+    return html;
   });
 
-  // Render reactions under the post content
-  api.decorateWidget("post-bottom:after", (helper) => {
-    const post = helper.widget.model;
-    const reactions = getReactions(post);
+  //
+  // 2. GLOBAL CLICK HANDLER FOR REACTIONS
+  //
+  api.onPageChange(() => {
+    document.addEventListener("click", async (e) => {
+      // Add reaction button
+      if (e.target.classList.contains("add-reaction-btn")) {
+        const postId = e.target.dataset.postId;
+        const emoji = prompt("Enter emoji:");
+        if (emoji) handleReaction(postId, emoji, true);
+        return;
+      }
 
-    const items = Object.keys(reactions).map((emoji) => {
-      const count = reactions[emoji].length;
-      return helper.h(
-        "span.multi-emoji-reaction",
-        {
-          onclick: () => toggleUserReaction(post, emoji),
-        },
-        `${emoji} ${count}`
-      );
+      // Existing reaction item clicked
+      const item = e.target.closest(".reaction-item");
+      if (item) {
+        const postId = item.parentElement.dataset.postId;
+        const emoji = item.dataset.emoji;
+        handleReaction(postId, emoji, false);
+      }
+    });
+  });
+
+  //
+  // 3. SAVE / UPDATE REACTIONS
+  //
+  async function handleReaction(postId, emoji, addMode) {
+    const store = api.container.lookup("store:main");
+    const post = await store.find("post", postId);
+
+    let reactions = {};
+    if (post[FIELD]) {
+      try {
+        reactions = JSON.parse(post[FIELD]);
+      } catch (e) {
+        reactions = {};
+      }
+    }
+
+    const user = api.getCurrentUser();
+    if (!user) return;
+
+    reactions[emoji] ||= [];
+
+    // Add or remove reaction
+    if (addMode) {
+      if (!reactions[emoji].includes(user.id)) {
+        reactions[emoji].push(user.id);
+      }
+    } else {
+      reactions[emoji] = reactions[emoji].filter((id) => id !== user.id);
+
+      if (reactions[emoji].length === 0) {
+        delete reactions[emoji];
+      }
+    }
+
+    // Save to PostCustomField
+    await post.save({
+      custom_fields: {
+        [FIELD]: JSON.stringify(reactions),
+      },
     });
 
-    return helper.h("div.multi-emoji-reaction-container", items);
-  });
-
-  // Basic emoji picker (prompt version)
-  function openEmojiPicker(post) {
-    const emoji = prompt("Enter emoji to react with:");
-    if (!emoji) return;
-
-    addEmojiReaction(post, emoji);
-  }
-
-  // Add emoji
-  function addEmojiReaction(post, emoji) {
-    const reactions = getReactions(post);
-    const userId = api.getCurrentUser().id;
-
-    if (!reactions[emoji]) reactions[emoji] = [];
-
-    // Avoid duplicate reaction from same user for same emoji
-    if (!reactions[emoji].includes(userId)) {
-      reactions[emoji].push(userId);
-    }
-
-    saveReactions(post, reactions);
-  }
-
-  // Remove emoji if user already reacted
-  function toggleUserReaction(post, emoji) {
-    const reactions = getReactions(post);
-    const userId = api.getCurrentUser().id;
-
-    if (!reactions[emoji]) return;
-
-    if (reactions[emoji].includes(userId)) {
-      // remove user reaction
-      reactions[emoji] = reactions[emoji].filter((id) => id !== userId);
-      if (reactions[emoji].length === 0) delete reactions[emoji];
-    } else {
-      reactions[emoji].push(userId);
-    }
-
-    saveReactions(post, reactions);
+    // Re-render
+    location.reload();
   }
 });
 
