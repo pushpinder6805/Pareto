@@ -149,8 +149,8 @@ export default apiInitializer("1.19.0", (api) => {
     if (isMobile) {
       sidebar =
         document.querySelector(".sidebar-hamburger-dropdown") ||
-        document.querySelector(".revamped.menu-panel.slide-in .sidebar-hamburger-dropdown") ||
-        document.querySelector(".revamped.menu-panel.slide-in");
+        document.querySelector(".drawer-content .mobile-nav") ||
+        document.querySelector(".drawer-content");
     }
 
     if (!sidebar) return;
@@ -212,11 +212,15 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
+  /* -----------------------------
+      WAIT FOR SIDEBAR TO EXIST
+  ------------------------------*/
   const waitUntilReady = async () => {
     const sidebar =
       document.querySelector(".sidebar, .sidebar-container") ||
       document.querySelector(".sidebar-hamburger-dropdown") ||
-      document.querySelector(".revamped.menu-panel.slide-in");
+      document.querySelector(".drawer-content .mobile-nav") ||
+      document.querySelector(".drawer-content");
 
     if (!sidebar || !(site?.categories?.length)) {
       setTimeout(waitUntilReady, 800);
@@ -226,7 +230,7 @@ export default apiInitializer("1.19.0", (api) => {
   };
 
   /* -----------------------------
-        DESKTOP SIDEBAR OBSERVER
+      DESKTOP SIDEBAR OBSERVER
   ------------------------------*/
   function observeSidebarRebuild() {
     const sidebarRoot = document.getElementById("d-sidebar");
@@ -252,38 +256,40 @@ export default apiInitializer("1.19.0", (api) => {
   }
 
   /* -----------------------------
-      MOBILE SIDEBAR OBSERVER (your real structure)
+      MOBILE DRAWER OBSERVER
   ------------------------------*/
-    function observeMobileSidebar() {
-      const observer = new MutationObserver((mutations) => {
-        for (let m of mutations) {
-          // Detect when the mobile sidebar panel appears or is rebuilt
-          if ([...m.addedNodes].some(
-            (n) =>
-              n.nodeType === 1 &&
-              n.classList &&
-              n.classList.contains("revamped") &&
-              n.classList.contains("menu-panel") &&
-              n.classList.contains("slide-in")
-          )) {
-            insertSections();
-          }
-        }
-      });
+  function observeMobileDrawer() {
+    const mobileView = document.getElementById("mobile-view");
 
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-      });
+    if (!mobileView) {
+      setTimeout(observeMobileDrawer, 300);
+      return;
     }
 
+    const observer = new MutationObserver((mutations) => {
+      for (let m of mutations) {
+        if (
+          [...m.addedNodes].some(
+            (n) => n.classList && n.classList.contains("drawer-content")
+          )
+        ) {
+          insertSections();
+        }
+      }
+    });
+
+    observer.observe(mobileView, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
   /* -----------------------------
-             START OBSERVERS
+      START OBSERVERS
   ------------------------------*/
   api.onPageChange(() => insertSections());
-  observeSidebarRebuild();     // Desktop fix
-  observeMobileSidebar();     // Mobile fix
+  observeSidebarRebuild();
+  observeMobileDrawer();
 
   waitUntilReady();
 });
-
