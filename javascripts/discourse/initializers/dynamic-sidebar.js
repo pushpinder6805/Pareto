@@ -39,8 +39,6 @@ export default apiInitializer("1.19.0", (api) => {
           ch.chatable_type === "Category" && ch.chatable_id === parent.id
       );
 
-      const hasSubs = subs.length > 0 || chats.length > 0;
-
       const emojiSrc = parent.emoji
         ? `/images/emoji/twemoji/${parent.emoji}.png?v=14`
         : parent.uploaded_logo?.url
@@ -56,41 +54,55 @@ export default apiInitializer("1.19.0", (api) => {
              data-section-name="${parent.slug}">
       `;
 
-      if (hasSubs) {
-        html += `
-          <div class="sidebar-section-header-wrapper sidebar-row">
-            <span class="sidebar-section-header-caret toggle-button"
-                  data-target="#sidebar-section-content-${parent.slug}"
-                  aria-controls="sidebar-section-content-${parent.slug}"
-                  aria-expanded="false">
-              <svg class="fa d-icon d-icon-angle-right svg-icon svg-string"><use href="#angle-right"></use></svg>
-            </span>
-            <a href="/c/${parent.slug}/${parent.id}"
-               class="sidebar-section-header-text sidebar-section-header-link">
-              ${emojiHTML}${parent.name}
-            </a>
-          </div>
-        `;
-      } else {
-        html += `
-          <div class="sidebar-section-header-wrapper sidebar-row">
-            <a href="/c/${parent.slug}/${parent.id}"
-               class="sidebar-section-header sidebar-section-header-link sidebar-row">
-              <span class="sidebar-section-header-caret">
-                <svg class="fa d-icon d-icon-link svg-icon svg-string"><use href="#link"></use></svg>
-              </span>
-              <span class="sidebar-section-header-text">${emojiHTML}${parent.name}</span>
-            </a>
-          </div>
-        `;
-      }
+      /* ---------------------------------
+          HEADER (EXPAND/COLLAPSE ONLY)
+      ----------------------------------*/
+      html += `
+        <div class="sidebar-section-header-wrapper sidebar-row sidebar-parent-toggle">
+          <span class="sidebar-section-header-caret toggle-button"
+                data-target="#sidebar-section-content-${parent.slug}"
+                aria-controls="sidebar-section-content-${parent.slug}"
+                aria-expanded="false">
+            <svg class="fa d-icon d-icon-angle-right svg-icon svg-string">
+              <use href="#angle-right"></use>
+            </svg>
+          </span>
 
+          <span class="sidebar-section-header-text sidebar-section-header-link parent-expand-title">
+            ${emojiHTML}${parent.name}
+          </span>
+        </div>
+      `;
+
+      /* ---------------------------------
+          SUBSECTION CONTENT
+      ----------------------------------*/
       html += `
         <ul id="sidebar-section-content-${parent.slug}"
             class="sidebar-section-content"
             style="display:none;">
       `;
 
+      /* ---------------------------------
+          ADD CLICKABLE PARENT INSIDE
+      ----------------------------------*/
+      html += `
+        <li class="sidebar-section-link-wrapper sidebar-subcategory parent-clickable"
+            data-category-id="${parent.id}">
+          <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-link sidebar-row">
+            <span class="sidebar-section-link-prefix icon">
+              <svg class="fa d-icon d-icon-folder svg-icon prefix-icon">
+                <use href="#folder"></use>
+              </svg>
+            </span>
+            <span class="sidebar-section-link-content-text">${emojiHTML}${parent.name}</span>
+          </a>
+        </li>
+      `;
+
+      /* ---------------------------------
+          SUBCATEGORIES
+      ----------------------------------*/
       subs.forEach((sub) => {
         const subEmojiSrc = sub.emoji
           ? `/images/emoji/twemoji/${sub.emoji}.png?v=14`
@@ -116,9 +128,13 @@ export default apiInitializer("1.19.0", (api) => {
           </li>`;
       });
 
+      /* ---------------------------------
+          CHAT CHANNELS
+      ----------------------------------*/
       chats.forEach((chat) => {
         const slug = chat.chatable?.slug || parent.slug;
         const chatUrl = `/chat/c/${slug}/${chat.id}`;
+
         html += `
           <li class="sidebar-section-link-wrapper sidebar-chat-channel"
               data-chat-channel-id="${chat.id}">
@@ -212,9 +228,6 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
-  /* -----------------------------
-      WAIT FOR SIDEBAR TO EXIST
-  ------------------------------*/
   const waitUntilReady = async () => {
     const sidebar =
       document.querySelector(".sidebar, .sidebar-container") ||
@@ -229,9 +242,6 @@ export default apiInitializer("1.19.0", (api) => {
     await insertSections();
   };
 
-  /* -----------------------------
-      DESKTOP SIDEBAR OBSERVER
-  ------------------------------*/
   function observeSidebarRebuild() {
     const sidebarRoot = document.getElementById("d-sidebar");
 
@@ -255,9 +265,6 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
-  /* -----------------------------
-      MOBILE DRAWER OBSERVER
-  ------------------------------*/
   function observeMobileDrawer() {
     const mobileView = document.getElementById("mobile-view");
 
@@ -284,12 +291,9 @@ export default apiInitializer("1.19.0", (api) => {
     });
   }
 
-  /* -----------------------------
-      START OBSERVERS
-  ------------------------------*/
   api.onPageChange(() => insertSections());
   observeSidebarRebuild();
   observeMobileDrawer();
-
   waitUntilReady();
 });
+
