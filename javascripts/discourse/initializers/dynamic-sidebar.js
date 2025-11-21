@@ -91,11 +91,13 @@ export default apiInitializer("1.19.0", (api) => {
             data-category-id="${parent.id}">
           <a href="/c/${parent.slug}/${parent.id}" class="sidebar-section-link sidebar-row">
             <span class="sidebar-section-link-prefix icon">
-              <svg class="fa d-icon d-icon-folder svg-icon prefix-icon">
-                <use href="#folder"></use>
+              <svg class="fa d-icon d-icon-arrow-right svg-icon prefix-icon">
+                <use href="#arrow-right"></use>
               </svg>
             </span>
-            <span class="sidebar-section-link-content-text">${emojiHTML}${parent.name}</span>
+            <span class="sidebar-section-link-content-text">
+              ${emojiHTML}${parent.name}
+            </span>
           </a>
         </li>
       `;
