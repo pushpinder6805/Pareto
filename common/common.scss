@@ -1,3 +1,39 @@
+
+//button-username//
+.update-username-external {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 600px) {
+  .update-username-external {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+//end//
+body.admin-interface #dynamic-category-sections {
+  display: none !important;
+}
+
+
+
+.sidebar-section-wrapper .sidebar-section-header-caret .d-icon {
+    height: 11px !important;
+}
+.sidebar-section-link-wrapper .sidebar-section-link-prefix.icon svg, .sidebar-section-link-wrapper .sidebar-section-link-prefix.square svg, .sidebar-section-link-wrapper .sidebar-section-link-prefix.emoji svg {
+    font-size: 11px !important;
+}
+.chat-message-action svg.d-icon {
+  width: 1em;
+  height: 1em;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
 .sidebar-section-header-wrapper,
 .sidebar-section-header-text,
 .parent-expand-title {
