@@ -178,81 +178,85 @@ export default apiInitializer("1.19.0", (api) => {
     enableCollapsing();
   }
 
-  function enableCollapsing() {
-    const sections = document.querySelectorAll(
-      "#dynamic-category-sections .sidebar-section"
-    );
-
-    sections.forEach((section) => {
-      const header = section.querySelector(".sidebar-section-header-wrapper");
-      const toggleBtn = section.querySelector(".toggle-button");
-      const target = section.querySelector(".sidebar-section-content");
-
-      if (!header || !toggleBtn || !target) return;
-
-      const newHeader = header.cloneNode(true);
-      header.parentNode.replaceChild(newHeader, header);
-
-      newHeader.addEventListener(
-        "click",
-        () => {
-          const isExpanded =
-            toggleBtn.getAttribute("aria-expanded") === "true";
-
-          const use = toggleBtn.querySelector("use"); // always the REAL icon
-
-          if (isExpanded) {
-            target.style.display = "none";
-            toggleBtn.setAttribute("aria-expanded", "false");
-            section.classList.remove("sidebar-section--expanded");
-            if (use) use.setAttribute("href", "#angle-right");
-          } else {
-            target.style.display = "";
-            toggleBtn.setAttribute("aria-expanded", "true");
-            section.classList.add("sidebar-section--expanded");
-            if (use) use.setAttribute("href", "#angle-down");
-          }
-        },
-        { passive: false }
+    function enableCollapsing() {
+      const sections = document.querySelectorAll(
+        "#dynamic-category-sections .sidebar-section"
       );
-    });
 
-    const toggles = document.querySelectorAll(
-      "#dynamic-category-sections .toggle-button"
-    );
+      sections.forEach((section) => {
+        const header = section.querySelector(".sidebar-section-header-wrapper");
+        const toggleBtn = section.querySelector(".toggle-button");
+        const target = section.querySelector(".sidebar-section-content");
 
-    toggles.forEach((btn) => {
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
+        if (!header || !toggleBtn || !target) return;
 
-      newBtn.addEventListener(
-        "click",
-        (e) => {
-          e.preventDefault();
-          e.stopPropagation();
+        const newHeader = header.cloneNode(true);
+        header.parentNode.replaceChild(newHeader, header);
 
-          const section = newBtn.closest(".sidebar-section");
-          const target = section.querySelector(".sidebar-section-content");
-          const isExpanded =
-            newBtn.getAttribute("aria-expanded") === "true";
-          const use = newBtn.querySelector("use");
+        newHeader.addEventListener(
+          "click",
+          () => {
+            const isExpanded =
+              toggleBtn.getAttribute("aria-expanded") === "true";
 
-          if (isExpanded) {
-            target.style.display = "none";
-            newBtn.setAttribute("aria-expanded", "false");
-            section.classList.remove("sidebar-section--expanded");
-            if (use) use.setAttribute("href", "#angle-right");
-          } else {
-            target.style.display = "";
-            newBtn.setAttribute("aria-expanded", "true");
-            section.classList.add("sidebar-section--expanded");
-            if (use) use.setAttribute("href", "#angle-down");
-          }
-        },
-        { passive: false }
+            // FIX: always update the REAL icon in the REAL DOM
+            const use = section.querySelector(".toggle-button use");
+
+            if (isExpanded) {
+              target.style.display = "none";
+              toggleBtn.setAttribute("aria-expanded", "false");
+              section.classList.remove("sidebar-section--expanded");
+              if (use) use.setAttribute("href", "#angle-right");
+            } else {
+              target.style.display = "";
+              toggleBtn.setAttribute("aria-expanded", "true");
+              section.classList.add("sidebar-section--expanded");
+              if (use) use.setAttribute("href", "#angle-down");
+            }
+          },
+          { passive: false }
+        );
+      });
+
+      const toggles = document.querySelectorAll(
+        "#dynamic-category-sections .toggle-button"
       );
-    });
-  }
+
+      toggles.forEach((btn) => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+
+        newBtn.addEventListener(
+          "click",
+          (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const section = newBtn.closest(".sidebar-section");
+            const target = section.querySelector(".sidebar-section-content");
+            const isExpanded =
+              newBtn.getAttribute("aria-expanded") === "true";
+
+            // FIX: use the real DOM icon
+            const use = section.querySelector(".toggle-button use");
+
+            if (isExpanded) {
+              target.style.display = "none";
+              newBtn.setAttribute("aria-expanded", "false");
+              section.classList.remove("sidebar-section--expanded");
+              if (use) use.setAttribute("href", "#angle-right");
+            } else {
+              target.style.display = "";
+              newBtn.setAttribute("aria-expanded", "true");
+              section.classList.add("sidebar-section--expanded");
+              if (use) use.setAttribute("href", "#angle-down");
+            }
+          },
+          { passive: false }
+        );
+      });
+    }
+
 
   const waitUntilReady = async () => {
     const sidebar =
