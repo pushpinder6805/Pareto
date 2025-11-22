@@ -179,9 +179,6 @@ export default apiInitializer("1.19.0", (api) => {
   }
 
   function enableCollapsing() {
-    /* ==========================================================
-       NEW PART — HEADER CLICK SUPPORT (TITLE + ICON TOGGLE)
-       ========================================================== */
     const sections = document.querySelectorAll(
       "#dynamic-category-sections .sidebar-section"
     );
@@ -198,12 +195,11 @@ export default apiInitializer("1.19.0", (api) => {
 
       newHeader.addEventListener(
         "click",
-        (e) => {
-          if (e.target.closest(".sidebar-section-link")) return;
-
+        () => {
           const isExpanded =
             toggleBtn.getAttribute("aria-expanded") === "true";
-          const use = toggleBtn.querySelector("use");
+
+          const use = toggleBtn.querySelector("use"); // always the REAL icon
 
           if (isExpanded) {
             target.style.display = "none";
@@ -221,9 +217,6 @@ export default apiInitializer("1.19.0", (api) => {
       );
     });
 
-    /* ==========================================================
-       EXISTING CARET-ONLY TOGGLE — UNCHANGED
-       ========================================================== */
     const toggles = document.querySelectorAll(
       "#dynamic-category-sections .toggle-button"
     );
@@ -240,7 +233,8 @@ export default apiInitializer("1.19.0", (api) => {
 
           const section = newBtn.closest(".sidebar-section");
           const target = section.querySelector(".sidebar-section-content");
-          const isExpanded = newBtn.getAttribute("aria-expanded") === "true";
+          const isExpanded =
+            newBtn.getAttribute("aria-expanded") === "true";
           const use = newBtn.querySelector("use");
 
           if (isExpanded) {
