@@ -1,3 +1,9 @@
+.sidebar-section-header-wrapper,
+.sidebar-section-header-text,
+.parent-expand-title {
+  cursor: pointer;
+}
+
 #dynamic-category-sections .sidebar-section-link,
 #dynamic-category-sections .sidebar-section-link-content-text {
   color: var(--primary-high) !important;
