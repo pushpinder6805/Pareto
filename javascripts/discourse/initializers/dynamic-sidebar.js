@@ -54,9 +54,6 @@ export default apiInitializer("1.19.0", (api) => {
              data-section-name="${parent.slug}">
       `;
 
-      /* ---------------------------------
-          HEADER (EXPAND/COLLAPSE ONLY)
-      ----------------------------------*/
       html += `
         <div class="sidebar-section-header-wrapper sidebar-row sidebar-parent-toggle">
           <span class="sidebar-section-header-caret toggle-button"
@@ -74,18 +71,12 @@ export default apiInitializer("1.19.0", (api) => {
         </div>
       `;
 
-      /* ---------------------------------
-          SUBSECTION CONTENT
-      ----------------------------------*/
       html += `
         <ul id="sidebar-section-content-${parent.slug}"
             class="sidebar-section-content"
             style="display:none;">
       `;
 
-      /* ---------------------------------
-          ADD CLICKABLE PARENT INSIDE
-      ----------------------------------*/
       html += `
         <li class="sidebar-section-link-wrapper sidebar-subcategory parent-clickable"
             data-category-id="${parent.id}">
@@ -102,9 +93,6 @@ export default apiInitializer("1.19.0", (api) => {
         </li>
       `;
 
-      /* ---------------------------------
-          SUBCATEGORIES
-      ----------------------------------*/
       subs.forEach((sub) => {
         const subEmojiSrc = sub.emoji
           ? `/images/emoji/twemoji/${sub.emoji}.png?v=14`
@@ -130,9 +118,6 @@ export default apiInitializer("1.19.0", (api) => {
           </li>`;
       });
 
-      /* ---------------------------------
-          CHAT CHANNELS
-      ----------------------------------*/
       chats.forEach((chat) => {
         const slug = chat.chatable?.slug || parent.slug;
         const chatUrl = `/chat/c/${slug}/${chat.id}`;
@@ -194,6 +179,51 @@ export default apiInitializer("1.19.0", (api) => {
   }
 
   function enableCollapsing() {
+    /* ==========================================================
+       NEW PART — HEADER CLICK SUPPORT (TITLE + ICON TOGGLE)
+       ========================================================== */
+    const sections = document.querySelectorAll(
+      "#dynamic-category-sections .sidebar-section"
+    );
+
+    sections.forEach((section) => {
+      const header = section.querySelector(".sidebar-section-header-wrapper");
+      const toggleBtn = section.querySelector(".toggle-button");
+      const target = section.querySelector(".sidebar-section-content");
+
+      if (!header || !toggleBtn || !target) return;
+
+      const newHeader = header.cloneNode(true);
+      header.parentNode.replaceChild(newHeader, header);
+
+      newHeader.addEventListener(
+        "click",
+        (e) => {
+          if (e.target.closest(".sidebar-section-link")) return;
+
+          const isExpanded =
+            toggleBtn.getAttribute("aria-expanded") === "true";
+          const use = toggleBtn.querySelector("use");
+
+          if (isExpanded) {
+            target.style.display = "none";
+            toggleBtn.setAttribute("aria-expanded", "false");
+            section.classList.remove("sidebar-section--expanded");
+            if (use) use.setAttribute("href", "#angle-right");
+          } else {
+            target.style.display = "";
+            toggleBtn.setAttribute("aria-expanded", "true");
+            section.classList.add("sidebar-section--expanded");
+            if (use) use.setAttribute("href", "#angle-down");
+          }
+        },
+        { passive: false }
+      );
+    });
+
+    /* ==========================================================
+       EXISTING CARET-ONLY TOGGLE — UNCHANGED
+       ========================================================== */
     const toggles = document.querySelectorAll(
       "#dynamic-category-sections .toggle-button"
     );
